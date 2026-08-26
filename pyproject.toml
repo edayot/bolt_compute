@@ -1,0 +1,20 @@
+[project]
+name = "bolt_compute"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "beet>=0.116.0",
+    "bolt>=0.50.1",
+]
+
+
+[tool.uv.sources]
+beet = { git = "https://github.com/edayot/beet", branch = "runtime_minecraft_version" }
+mecha = { git = "https://github.com/edayot/beet/", branch = "runtime_minecraft_version", subdirectory = "packages/mecha" }
+bolt = { git = "https://github.com/edayot/beet/", branch = "runtime_minecraft_version", subdirectory = "packages/bolt" }
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
