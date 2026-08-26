@@ -23,7 +23,8 @@ data modify storage example:main result set compute default {
 
 # dataa = "coucoi"
 
-data modify storage example:main result_bolt set compute bolt 1
+data modify storage example:main result_bolt set compute bolt (1)
+data modify storage example:main result_bolt set compute bolt (1+1+1)
 
 # data modify storage example:main result_bolt set compute bolt (
 #     (storage example:main prod1)*(storage example:main prod2)

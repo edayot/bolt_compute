@@ -5,7 +5,7 @@ data_pack:
 
 require:
   - beet.contrib.snapshot
-  - mecha.contrib.debug_ast
+  # - mecha.contrib.debug_ast
   - bolt
   - bolt_compute
 
