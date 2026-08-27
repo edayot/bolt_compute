@@ -3,9 +3,9 @@ from typing import Generator, Literal, Optional, TypedDict
 
 from beet import Context
 from beet.core.utils import JsonDict, required_field
-from mecha import AstNode, Mecha, CommandTree, MultilineParser, delegate, rule
-from mecha.utils import number_to_string
-from bolt.pattern import STRING_PATTERN
+from mecha import AstNbtPath, AstNbtPathKey, AstNbtPathSubscript, AstNode, AstResourceLocation, Mecha, CommandTree, MultilineParser, NbtPathParser, delegate, rule
+from mecha.utils import QuoteHelper, number_to_string
+from bolt.pattern import STRING_PATTERN, RESOURCE_LOCATION_PATTERN
 from tokenstream import TokenStream, Token, set_location
 
 import json
@@ -46,17 +46,34 @@ def iter_compute_tree(tree: CommandTree):
                                         compute = index.children["compute"]
                                         
 
+@dataclass(frozen=True, slots=True)
+class AstComputeResourceLocation(AstResourceLocation): ...
 
 
-class AstSource(TypedDict):
-    ...
+@dataclass(frozen=True, slots=True)
+class AstComputeStorage(AstNode):
+    """Ast bolt compute storage node."""
+    storage: AstComputeResourceLocation = required_field()
+    path: AstNbtPath = required_field()
 
-type ValueType = AstOperation | str | float | AstSource
+    @classmethod
+    def from_value(
+        cls,
+        storage: AstComputeResourceLocation,
+        path: AstNbtPath,
+    ) -> AstComputeStorage:
+        """Return a bool node from the given value."""
+        return AstComputeStorage(storage=storage, path=path)
+
+
+type AstComputeSource = AstComputeStorage
+
+type ValueType = AstComputeOperation | AstResourceLocation | float | AstComputeSource
 type Operation = Literal["+", "-", "/", "*"]
 
 @dataclass(frozen=True, slots=True)
-class AstOperation(AstNode):
-    """Ast bool node."""
+class AstComputeOperation(AstNode):
+    """Ast bolt compute node."""
 
     lvalue: ValueType = required_field()
     operation: Optional[Operation] = required_field()
@@ -70,66 +87,114 @@ class AstOperation(AstNode):
         lvalue: ValueType,
         operation: Optional[Operation] = None,
         rvalue: Optional[ValueType] = None,
-    ) -> AstOperation:
+    ) -> AstComputeOperation:
         """Return a bool node from the given value."""
-        return AstOperation(lvalue=lvalue, operation=operation, rvalue=rvalue)
+        return AstComputeOperation(lvalue=lvalue, operation=operation, rvalue=rvalue)
 
 
-def parse_operation(stream: TokenStream) -> AstOperation:
+def parse_operation(stream: TokenStream) -> AstComputeOperation:
     lvalue = parse_literal(stream)
     token = stream.expect_any("cparent", "operation")
     match token:
         case Token("cparent"):
-            return AstOperation.from_value(lvalue)
+            return AstComputeOperation.from_value(lvalue)
         case Token("operation"):
             rvalue = parse_operation(stream)
-            return AstOperation.from_value(lvalue, token.value, rvalue)
+            return AstComputeOperation.from_value(lvalue, token.value, rvalue)
     raise NotImplementedError("UNREACHABLE")
 
 
 def parse_literal(stream: TokenStream) -> ValueType:
-    token = stream.expect_any("oparent", "number", "quotes")
+    token = stream.expect_any("oparent", "number", "quotes", "storage")
     match token:
         case Token("oparent"):
             return parse_operation(stream)
         case Token("number"):
             return float(token.value)
         case Token("quotes"):
-            res = stream.expect("resource")
+            res: AstResourceLocation = delegate("resource_location")(stream)
             stream.expect("quotes")
-            return res.value
+            return res
+        case Token("storage"):
+            storage: AstResourceLocation = delegate("resource_location")(stream)
+            parser = delegate("nbt_path")
+            path: AstNbtPath = parser(stream)
+            return AstComputeStorage.from_value(storage, path)
+
     raise NotImplementedError("UNREACHABLE")
 
 
-def serialize_recursive(node: ValueType, is_first: bool = True) -> Generator[JsonDict | str | float]:
-    if isinstance(node, AstOperation):
+def serialize_recursive(node: ValueType, is_first: bool = True) -> JsonDict | str | float:
+    if isinstance(node, AstComputeOperation):
         if not node.operation:
-            yield from serialize_recursive(node.lvalue, is_first = is_first)
+            return serialize_recursive(node.lvalue, is_first = is_first)
         else:
             assert node.rvalue
             match node.operation:
                 case "+":
-                    yield {"type":"minecraft:sum","operands":[
-                        *serialize_recursive(node.lvalue, is_first = False),
-                        *serialize_recursive(node.rvalue, is_first = False)
-                    ]}
+                    return {
+                        "type":"minecraft:sum",
+                        "operands":[
+                            serialize_recursive(node.lvalue, is_first = False),
+                            serialize_recursive(node.rvalue, is_first = False)
+                        ]
+                    }
+                case "-":
+                    return {
+                        "type":"minecraft:sum",
+                        "operands":[
+                            serialize_recursive(node.lvalue, is_first = False),
+                            {
+                                "type": "minecraft:product",
+                                "operands": [
+                                    -1,
+                                    serialize_recursive(node.rvalue, is_first = False)
+                                ]
+                            },
+                        ]
+                    }
+                case "*":
+                    return {
+                        "type": "minecraft:product",
+                        "operands": [
+                            serialize_recursive(node.lvalue, is_first = False),
+                            serialize_recursive(node.rvalue, is_first = False)
+                        ]
+                    }
                 case _:
                     raise NotImplementedError()
     elif isinstance(node, float):
         if is_first:
-            yield {"type":"constant","value":node}
+            return {"type":"constant","value":node}
         else:
-            yield node
-    elif isinstance(node, str):
-        yield node
+            return node
+    elif isinstance(node, AstResourceLocation):
+        return node.get_canonical_value()
+    elif isinstance(node, AstComputeStorage):
+        res = []
+        return {
+            "type": "minecraft:storage",
+            "storage": node.storage.get_canonical_value(),
+            "path": node.path
+        }
+    else:
+        raise NotImplementedError(node)
 
-@rule(AstOperation)
+
+@rule(AstComputeOperation)
 def serialize_operation(node: ValueType, result: list[str]):
     result.pop()
     result.pop()
     result.append("default")
     result.append(" ")
-    result.extend([json.dumps(x) for x in serialize_recursive(node)])
+    result.append('{')
+    result.append("}")
+
+    res = serialize_recursive(node)
+    if isinstance(res, str):
+        result.append(res)
+    else:
+        result.extend(json.dumps(res))
 
 
 def operation_parser(stream: TokenStream):
@@ -140,10 +205,11 @@ def operation_parser(stream: TokenStream):
         cparent=r"\)",
         operation=r"\+|\-|\*|\/",
         number=r"[+-]?([0-9]*[.])?[0-9]+",
+        storage=r"storage",
         quotes=r'"',
-        resource=STRING_PATTERN,
+        resource=RESOURCE_LOCATION_PATTERN,
     ):
-        token = stream.expect("oparent")
+        stream.expect("oparent")
         operation = parse_operation(stream)
     return operation
         
