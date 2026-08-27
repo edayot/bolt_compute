@@ -34,6 +34,13 @@ data modify storage example:main result_bolt set compute bolt ("aaa:bbb" * "ccc:
 data modify storage example:main result_bolt set compute bolt ((storage example:main prod1)*(storage example:main prod2))
 data modify storage example:main result_bolt set compute bolt (2*(storage example:main prod1)*(storage example:main prod2)+1)
 
+# x = 25
+# y = 85
+# data modify storage example:main result_bolt set compute bolt (x*y)
+
+
+# p = (storage example:main prod1)
+# data modify storage example:main result_bolt set compute bolt (p)
 
 # data modify storage example:main result_bolt set compute bolt (
 #     (storage example:main prod1)*(storage example:main prod2)
