@@ -52,6 +52,13 @@ data modify storage example:main result_bolt set compute bolt (sum(["1"]))
 data modify storage example:main result_bolt set compute bolt (sum(["1","2","3","4","5","6"]))
 
 
+data modify storage example:main result_bolt set compute bolt (average(["1"]))
+data modify storage example:main result_bolt set compute bolt (average(["1","2","3","4","5","6"]))
+
+
+data modify storage example:main result_bolt set compute bolt (binomial(5, 2,))
+data modify storage example:main result_bolt set compute bolt (uniform(5, 2,))
+
 data modify storage example:main result_bolt set compute bolt ("aaa:bbb")
 data modify storage example:main result_bolt set compute bolt ("aaa:bbb" + "ccc:ddd")
 data modify storage example:main result_bolt set compute bolt ("aaa:bbb" * "ccc:ddd")

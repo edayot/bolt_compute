@@ -101,6 +101,38 @@ class AstComputeListCall(AstNode):
         """Return a bool node from the given value."""
         return cls(type=type, operands=operands, depth=depth)
 
+@dataclass(frozen=True, slots=True)
+class AstComputeBinomial(AstNode):
+    n: ValueType = required_field()
+    p: ValueType = required_field()
+    depth: int = required_field()
+
+    @classmethod
+    def from_value(
+        cls,
+        n: ValueType,
+        p: ValueType,
+        depth: int,
+    ) -> Self:
+        return cls(n=n, p=p, depth=depth)
+
+@dataclass(frozen=True, slots=True)
+class AstComputeUniform(AstNode):
+    minimum: ValueType = required_field()
+    maximum: ValueType = required_field()
+    depth: int = required_field()
+
+    @classmethod
+    def from_value(
+        cls,
+        minimum: ValueType,
+        maximum: ValueType,
+        depth: int,
+    ) -> Self:
+        return cls(minimum=minimum, maximum=maximum, depth=depth)
+
+
+
 
 @dataclass(frozen=True, slots=True)
 class AstComputeNumber(AstNode):
@@ -243,6 +275,23 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
                     raise InvalidSyntax(f"Function {token.value} require at least one argument")
                 stream.expect("cparent")
                 return AstComputeListCall.from_value(token.value, values, depth)
+            elif token.value == "binomial":
+                stream.expect("oparent")
+                N = parse_literal(stream, depth=depth+1)
+                stream.expect("comma")
+                P = parse_literal(stream, depth=depth+1)
+                cparent, comma = stream.expect("cparent", "comma")
+                if comma: stream.expect("cparent")
+                return AstComputeBinomial.from_value(N, P, depth)
+            elif token.value == "uniform":
+                stream.expect("oparent")
+                minimum = parse_literal(stream, depth=depth+1)
+                stream.expect("comma")
+                maximum = parse_literal(stream, depth=depth+1)
+                cparent, comma = stream.expect("cparent", "comma")
+                if comma: stream.expect("cparent")
+                return AstComputeUniform.from_value(minimum, maximum, depth)
+
             raise NotImplementedError(token.value)
 
     raise NotImplementedError("UNREACHABLE")
@@ -261,13 +310,14 @@ def operation_parser(stream: TokenStream):
         obracket=r"\[",
         cbracket=r"\]",
         comma=r",",
+        equal=r"=",
         operation=r"\+|\-|\*|\/",
         number=r"[+-]?([0-9]*[.])?[0-9]+",
         storage=r"storage",
         call="|".join(FUNCTION_OVERRIDES),
         quotes=r'"',
         resource=RESOURCE_LOCATION_PATTERN,
-        literal=None
+        name=r'[a-z]([a-z0-9]+)?'
     ):
         stream.expect("oparent")
         operation = parse_operation(stream, depth=0)
@@ -357,16 +407,38 @@ def serialize_compute_number(node: AstComputeNumber, result: list[str]):
     yield node.value
     if node.depth == 0: result.append('}')
 
+@rule(AstComputeBinomial)
+def serialize_compute_binomial(node: AstComputeBinomial, result: list[str]): 
+    result.append('{type:"minecraft:binomial",n:')
+    yield node.n
+    result.append(',p:')
+    yield node.p
+    result.append('}')
+
+@rule(AstComputeUniform)
+def serialize_compute_uniform(node: AstComputeUniform, result: list[str]): 
+    result.append('{type:"minecraft:uniform",min:')
+    yield node.minimum
+    result.append(',max:')
+    yield node.maximum
+    result.append('}')
+
 def beet_default(ctx: Context):
     mc = ctx.inject(Mecha)
     mc.spec.parsers["command:argument:minecraft:number_provider"] = MultilineParser(delegate("resource_location_or_nbt"))
-    mc.serialize.add_rule(serialize_operation)
-    mc.serialize.add_rule(serialize_resource_location)
-    mc.serialize.add_rule(serialize_root)
-    mc.serialize.add_rule(serialize_storage)
-    mc.serialize.add_rule(serialize_bolt_value)
-    mc.serialize.add_rule(serialize_compute_number)
-    mc.serialize.add_rule(serialize_list_call)
+    rules = [
+        serialize_operation,
+        serialize_resource_location,
+        serialize_root,
+        serialize_storage,
+        serialize_bolt_value,
+        serialize_compute_number,
+        serialize_list_call,
+        serialize_compute_binomial,
+        serialize_compute_uniform,
+    ]
+    for r in rules:
+        mc.serialize.add_rule(r)
 
     for compute in iter_compute_tree(mc.spec.tree):
         if compute.children:
