@@ -24,17 +24,34 @@ data modify storage example:main result set compute default {
 # dataa = "coucoi"
 
 data modify storage example:main result_bolt set compute bolt (1)
+data modify storage example:main result_bolt set compute bolt (1+1)
+data modify storage example:main result_bolt set compute bolt (4+7*2+8)
 data modify storage example:main result_bolt set compute bolt (1+1+1)
 data modify storage example:main result_bolt set compute bolt (21-78)
 data modify storage example:main result_bolt set compute bolt (21*78)
 
+x = 1.25
+
+data modify storage example:main result_bolt set compute bolt (x)
+data modify storage example:main result_bolt set compute bolt (x*x)
+
+y = "eee:aaaaaa"
+data modify storage example:main result_bolt set compute bolt (y)
+
+for z in range(15):
+    data modify storage example:main result_bolt set compute bolt (f"minecraft:{z}")
+
+
+# data modify storage example:main result_bolt set compute bolt (sum([x for x in range(6)]))
+
 data modify storage example:main result_bolt set compute bolt ("aaa:bbb")
+data modify storage example:main result_bolt set compute bolt ("aaa:bbb" + "ccc:ddd")
 data modify storage example:main result_bolt set compute bolt ("aaa:bbb" * "ccc:ddd")
 
 data modify storage example:main result_bolt set compute bolt ((storage example:main prod1)*(storage example:main prod2))
 data modify storage example:main result_bolt set compute bolt (2*(storage example:main prod1)*(storage example:main prod2)+1)
 
-# x = 25
+# # x = 25
 # y = 85
 # data modify storage example:main result_bolt set compute bolt (x*y)
 
