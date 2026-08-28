@@ -3,13 +3,22 @@ from typing import Any, Callable, Generator, Literal, Optional, Self, Type, Type
 
 from beet import Context
 from beet.core.utils import JsonDict, required_field
-from bolt import AstFormatString, AstIdentifier, AstValue
+from bolt import AstCall, AstFormatString, AstIdentifier, AstValue
 from mecha import AbstractNode, AstNbtPath, AstNbtPathKey, AstNbtPathSubscript, AstNode, AstNumber, AstResourceLocation, Mecha, CommandTree, MultilineParser, NbtPathParser, Rule, delegate, rule
 from mecha.utils import QuoteHelper, number_to_string
 from bolt.pattern import STRING_PATTERN, RESOURCE_LOCATION_PATTERN
 from tokenstream import TokenStream, Token, set_location, InvalidSyntax
 
-import json
+FUNCTION_OVERRIDES = [
+    "average",
+    "binomial",
+    "conditional",
+    "maximum",
+    "minimum",
+    "uniform",
+    "sum",
+    "product",
+]
 
 def iter_compute_tree(tree: CommandTree):
     if tree.children:
@@ -64,30 +73,34 @@ class AstComputeStorage(AstNode):
         return AstComputeStorage(storage=storage, path=path, depth=depth)
 
 @dataclass(frozen=True, slots=True)
-class AstComputeIdentifier(AstNode):
-    value: AstIdentifier = required_field()
+class AstComputeBoltValue(AstNode):
+    value: AstNode = required_field()
     depth: int = required_field()
 
     @classmethod
     def from_value(
         cls,
-        value: AstIdentifier,
+        value: AstNode,
         depth: int,
     ) -> Self:
         return cls(value=value, depth=depth)
 
 @dataclass(frozen=True, slots=True)
-class AstComputeFormatString(AstNode):
-    value: AstFormatString = required_field()
+class AstComputeListCall(AstNode):
+    type: str = required_field()
+    operands: list[ValueType] = required_field()
     depth: int = required_field()
 
     @classmethod
     def from_value(
         cls,
-        value: AstFormatString,
+        type: str,
+        operands: list[ValueType],
         depth: int,
     ) -> Self:
-        return cls(value=value, depth=depth)
+        """Return a bool node from the given value."""
+        return cls(type=type, operands=operands, depth=depth)
+
 
 @dataclass(frozen=True, slots=True)
 class AstComputeNumber(AstNode):
@@ -107,7 +120,7 @@ class AstComputeNumber(AstNode):
 
 type AstComputeSource = AstComputeStorage # future AstScoreStorage
 
-type ValueType = AstComputeOperation | AstComputeResourceLocation | AstComputeNumber | AstComputeSource | AstComputeIdentifier
+type ValueType = AstComputeOperation | AstComputeResourceLocation | AstComputeNumber | AstComputeSource | AstComputeBoltValue
 type Operation = Literal["+", "-", "/", "*"]
 
 @dataclass(frozen=True, slots=True)
@@ -155,17 +168,35 @@ def parse_operation(stream: TokenStream, depth: int) -> AstComputeOperation:
         return AstComputeOperation.from_value(lvalue, depth=depth)
     
     lvalue = parse_literal(stream, depth=depth+1)
+    print(lvalue)
     token = stream.expect("operation")
     rvalue = parse_operation(stream, depth=depth+1)
     op: Operation = token.value # pyright: ignore[reportAssignmentType]
     return AstComputeOperation.from_value(lvalue, op, rvalue, depth=depth)
     raise NotImplementedError("UNREACHABLE")
 
+def parse_list(stream: TokenStream, depth: int):
+    stream.expect("obracket")
+    values: list[ValueType] = []
+    while True:
+        with stream.checkpoint() as commit:
+            stream.expect("cbracket")
+            commit()
+            break
+        values.append(parse_literal(stream, depth=depth+1))
+        follow = stream.expect_any("comma", "cbracket")
+        match follow:
+            case Token("cbracket"):
+                break
+            case Token("comma"):
+                ...
+    return values
+
 
 def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
     with stream.checkpoint() as commit:
         bolt_expression_parser = delegate("bolt:primary")
-        bolt_node: AstValue | AstIdentifier = bolt_expression_parser(stream)
+        bolt_node: AstNode = bolt_expression_parser(stream)
         # parse and return value type
         if isinstance(bolt_node, AstValue):
             if isinstance(bolt_node.value, (float, int)):
@@ -176,14 +207,20 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
                 return AstComputeResourceLocation.from_value(bolt_node.value, depth=depth)
         elif isinstance(bolt_node, AstIdentifier):
             commit()
-            return AstComputeIdentifier.from_value(bolt_node, depth=depth)
+            return AstComputeBoltValue.from_value(bolt_node, depth=depth)
         elif isinstance(bolt_node, AstFormatString):
             commit()
-            return AstComputeFormatString.from_value(bolt_node, depth=depth)
+            return AstComputeBoltValue.from_value(bolt_node, depth=depth)
+        elif isinstance(bolt_node, AstCall):
+            if isinstance(bolt_node.value, AstIdentifier) and bolt_node.value.value in FUNCTION_OVERRIDES:
+                raise InvalidSyntax(f"Python built-in sum collide with bolt_compute sum")
+            commit()
+            return AstComputeBoltValue.from_value(bolt_node, depth=depth)
+        
         raise NotImplementedError(bolt_node)
 
     stream.crop()
-    token = stream.expect_any("oparent", "number", "quotes", "storage")
+    token = stream.expect_any("oparent", "number", "quotes", "storage", "call")
     match token:
         case Token("oparent"):
             return parse_operation(stream, depth=depth+1)
@@ -198,6 +235,15 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
             parser = delegate("nbt_path")
             path: AstNbtPath = parser(stream)
             return AstComputeStorage.from_value(storage, path, depth=depth)
+        case Token("call"):
+            if token.value in ["maximum", "minimum", "average", "sum", "product"]:
+                stream.expect("oparent")
+                values = parse_list(stream, depth+1)
+                if len(values) == 0:
+                    raise InvalidSyntax(f"Function {token.value} require at least one argument")
+                stream.expect("cparent")
+                return AstComputeListCall.from_value(token.value, values, depth)
+            raise NotImplementedError(token.value)
 
     raise NotImplementedError("UNREACHABLE")
 
@@ -212,11 +258,16 @@ def operation_parser(stream: TokenStream):
     with stream.syntax(
         oparent=r"\(",
         cparent=r"\)",
+        obracket=r"\[",
+        cbracket=r"\]",
+        comma=r",",
         operation=r"\+|\-|\*|\/",
         number=r"[+-]?([0-9]*[.])?[0-9]+",
         storage=r"storage",
+        call="|".join(FUNCTION_OVERRIDES),
         quotes=r'"',
         resource=RESOURCE_LOCATION_PATTERN,
+        literal=None
     ):
         stream.expect("oparent")
         operation = parse_operation(stream, depth=0)
@@ -277,19 +328,26 @@ def serialize_storage(node: AstComputeStorage, result: list[str]):
     result.append('"}')
 
 
-@rule(AstComputeIdentifier)
-def serialize_compute_identifier(node: AstComputeIdentifier, result: list[str]):
+@rule(AstComputeBoltValue)
+def serialize_bolt_value(node: AstComputeBoltValue, result: list[str]):
     if isinstance(node.value, (float, int)):
         yield AstComputeNumber.from_value(node.value, node.depth)
     elif isinstance(node.value, str): 
         yield AstComputeResourceLocation.from_value(node.value, node.depth)
 
-@rule(AstComputeFormatString)
-def serialize_compute_format_string(node: AstComputeFormatString, result: list[str]):
-    if isinstance(node.value, (float, int)):
-        yield AstComputeNumber.from_value(node.value, node.depth)
-    elif isinstance(node.value, str): 
-        yield AstComputeResourceLocation.from_value(node.value, node.depth)
+
+@rule(AstComputeListCall)
+def serialize_list_call(node: AstComputeListCall, result: list[str]):
+    result.append('{type:"minecraft:')
+    result.append(node.type)
+    result.append('",operands:[')
+    sep = ""
+    for children in node.operands:
+        result.append(sep)
+        sep = ","
+        yield children
+    result.append(']}')
+
 
 
 
@@ -306,9 +364,9 @@ def beet_default(ctx: Context):
     mc.serialize.add_rule(serialize_resource_location)
     mc.serialize.add_rule(serialize_root)
     mc.serialize.add_rule(serialize_storage)
-    mc.serialize.add_rule(serialize_compute_identifier)
+    mc.serialize.add_rule(serialize_bolt_value)
     mc.serialize.add_rule(serialize_compute_number)
-    mc.serialize.add_rule(serialize_compute_format_string)
+    mc.serialize.add_rule(serialize_list_call)
 
     for compute in iter_compute_tree(mc.spec.tree):
         if compute.children:

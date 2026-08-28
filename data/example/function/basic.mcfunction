@@ -42,13 +42,21 @@ for z in range(15):
     data modify storage example:main result_bolt set compute bolt (f"minecraft:{z}")
 
 
-# data modify storage example:main result_bolt set compute bolt (sum([x for x in range(6)]))
+data modify storage example:main result_bolt set compute bolt (maximum([1]))
+data modify storage example:main result_bolt set compute bolt (maximum([1,2,3,4,5,6]))
+
+data modify storage example:main result_bolt set compute bolt (sum([1]))
+data modify storage example:main result_bolt set compute bolt (sum([1,2,3,4,5,6]))
+
+data modify storage example:main result_bolt set compute bolt (sum(["1"]))
+data modify storage example:main result_bolt set compute bolt (sum(["1","2","3","4","5","6"]))
+
 
 data modify storage example:main result_bolt set compute bolt ("aaa:bbb")
 data modify storage example:main result_bolt set compute bolt ("aaa:bbb" + "ccc:ddd")
 data modify storage example:main result_bolt set compute bolt ("aaa:bbb" * "ccc:ddd")
 
-data modify storage example:main result_bolt set compute bolt ((storage example:main prod1)*(storage example:main prod2))
+data modify storage example:main result_bolt set compute bolt ((storage f"example:{'main'}" f"prod{1}")*(storage example:main prod2))
 data modify storage example:main result_bolt set compute bolt (2*(storage example:main prod1)*(storage example:main prod2)+1)
 
 # # x = 25
