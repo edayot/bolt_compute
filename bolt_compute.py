@@ -3,10 +3,11 @@ from typing import Any, Generator, Literal, Optional, TypedDict
 
 from beet import Context
 from beet.core.utils import JsonDict, required_field
+from bolt import AstValue
 from mecha import AstNbtPath, AstNbtPathKey, AstNbtPathSubscript, AstNode, AstNumber, AstResourceLocation, Mecha, CommandTree, MultilineParser, NbtPathParser, delegate, rule
 from mecha.utils import QuoteHelper, number_to_string
 from bolt.pattern import STRING_PATTERN, RESOURCE_LOCATION_PATTERN
-from tokenstream import TokenStream, Token, set_location
+from tokenstream import TokenStream, Token, set_location, InvalidSyntax
 
 import json
 
@@ -118,6 +119,17 @@ def parse_operation(stream: TokenStream, depth: int = 0) -> AstComputeOperation:
 
 
 def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
+    with stream.checkpoint() as commit:
+        bolt_expression_parser = delegate("bolt:atom")
+        bolt_node: AstValue = bolt_expression_parser(stream)
+        # parse and return value type
+        if isinstance(bolt_node.value, (float, int)):
+            commit()
+            return AstNumber.from_value(bolt_node.value)
+        elif isinstance(bolt_node.value, str):
+            commit()
+            return AstComputeResourceLocation.from_value(bolt_node.value, depth=depth)
+        
     token = stream.expect_any("oparent", "number", "quotes", "storage")
     match token:
         case Token("oparent"):
@@ -156,41 +168,51 @@ def operation_parser(stream: TokenStream):
         stream.expect("oparent")
         operation = parse_operation(stream, depth=0)
     return AstBoltComputeRoot(children=operation)
-        
+
+
+def yield_value_type(value: ValueType, result: list[str], top_level: bool = False):
+    if isinstance(value, AstNumber):
+        if top_level:
+            result.append('{type:"minecraft:constant",value:')
+            yield value
+            result.append('}')
+        else:
+            yield value
+    elif isinstance(value, AstComputeResourceLocation):
+        if not top_level: result.append('"')
+        yield value
+        if not top_level: result.append('"')
+    else:
+        yield value
 
 @rule(AstComputeOperation)
 def serialize_operation(node: AstComputeOperation, result: list[str]):
     if node.lvalue and not node.rvalue:
         assert node.operation is None
-        if node.depth == 0:
-            result.append('{type:"minecraft:constant",value:')
-            yield node.lvalue
-            result.append('}')
-        else:
-            yield node.lvalue
+        yield from yield_value_type(node.lvalue, result, node.depth == 0)
     elif node.lvalue and node.rvalue:
         assert node.operation is not None
         match node.operation:
             case "+":
                 result.append('{type:"minecraft:sum",operands:[')
-                yield node.lvalue
+                yield from yield_value_type(node.lvalue, result)
                 result.append(',')
-                yield node.rvalue
+                yield from yield_value_type(node.rvalue, result)
                 result.append(']}')
             case "-":
                 result.append('{type:"minecraft:sum",operands:[')
-                yield node.lvalue
+                yield from yield_value_type(node.lvalue, result)
                 result.append(',')
                 result.append('{type:"minecraft:product",operands:[-1')
                 result.append(',')
-                yield node.rvalue
+                yield from yield_value_type(node.rvalue, result)
                 result.append(']}')
                 result.append(']}')
             case "*":
                 result.append('{type:"minecraft:product",operands:[')
-                yield node.lvalue
+                yield from yield_value_type(node.lvalue, result)
                 result.append(',')
-                yield node.rvalue
+                yield from yield_value_type(node.rvalue, result)
                 result.append(']}')
             case _:
                 raise NotImplementedError()
