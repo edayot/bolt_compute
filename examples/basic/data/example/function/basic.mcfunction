@@ -140,6 +140,10 @@ my_thing = "attacker"
 compute bolt (
     (score .my_thing my_score)
 )
+compute bolt (
+    (score my_thing my_score)
+)
+
 
 compute bolt (
     (score jeb_ my_score)
