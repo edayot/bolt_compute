@@ -193,18 +193,52 @@ class AstComputeOperation(AstNode):
 
 
 def parse_operation(stream: TokenStream, depth: int) -> AstComputeOperation:
+    """Parse operations with correct precedence: additive (lower) then multiplicative (higher)."""
+    return parse_additive(stream, depth)
+
+
+def parse_additive(stream: TokenStream, depth: int) -> AstComputeOperation:
+    """Parse additive operations (+, -) - lowest precedence."""
+    lvalue = parse_multiplicative(stream, depth + 1)
+    
+    while True:
+        with stream.alternative():
+            token = stream.expect("additive")
+            rvalue = parse_multiplicative(stream, depth + 1)
+            op: Operation = token.value  # pyright: ignore[reportAssignmentType]
+            lvalue = AstComputeOperation.from_value(lvalue, op, rvalue, depth=depth)
+            continue
+        break
+    
+    return lvalue
+
+
+def parse_multiplicative(stream: TokenStream, depth: int) -> AstComputeOperation:
+    """Parse multiplicative operations (*, /) - highest precedence."""
+    lvalue = parse_primary(stream, depth + 1)
+    
+    while True:
+        with stream.alternative():
+            token = stream.expect("multiplicative")
+            rvalue = parse_primary(stream, depth + 1)
+            op: Operation = token.value  # pyright: ignore[reportAssignmentType]
+            lvalue = AstComputeOperation.from_value(lvalue, op, rvalue, depth=depth)
+            continue
+        break
+    
+    return lvalue
+
+
+def parse_primary(stream: TokenStream, depth: int) -> ValueType:
+    """Parse primary expressions (literals, parenthesized expressions, function calls)."""
     with stream.checkpoint() as commit:
-        lvalue = parse_literal(stream, depth=depth)
+        stream.expect("oparent")
+        result = parse_additive(stream, depth=depth)
         stream.expect("cparent")
         commit()
-        return AstComputeOperation.from_value(lvalue, depth=depth)
+        return result
     
-    lvalue = parse_literal(stream, depth=depth+1)
-    token = stream.expect("operation")
-    rvalue = parse_operation(stream, depth=depth+1)
-    op: Operation = token.value # pyright: ignore[reportAssignmentType]
-    return AstComputeOperation.from_value(lvalue, op, rvalue, depth=depth)
-    raise NotImplementedError("UNREACHABLE")
+    return parse_literal(stream, depth=depth)
 
 def parse_list(stream: TokenStream, depth: int):
     stream.expect("obracket")
@@ -310,7 +344,8 @@ def operation_parser(stream: TokenStream):
         cbracket=r"\]",
         comma=r",",
         equal=r"=",
-        operation=r"\+|\-|\*|\/",
+        additive=r"\+|\-",
+        multiplicative=r"\*|\/",
         number=r"[+-]?([0-9]*[.])?[0-9]+",
         storage=r"storage",
         call="|".join(FUNCTION_OVERRIDES),
@@ -320,6 +355,7 @@ def operation_parser(stream: TokenStream):
     ):
         stream.expect("oparent")
         operation = parse_operation(stream, depth=0)
+        stream.expect("cparent")
     return AstBoltComputeRoot(children=operation)
 
 
