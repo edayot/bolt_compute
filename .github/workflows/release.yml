@@ -50,7 +50,7 @@ jobs:
           git push origin $(uv version --short)
           git push origin main
 
-          uv publish --username __token__ --password $PYPI_TOKEN
+          uv publish
 
           
           
