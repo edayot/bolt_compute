@@ -7,10 +7,14 @@ requires-python = ">=3.14"
 dependencies = [
     "beet>=0.116.0",
     "bolt>=0.50.1",
-    "pytest>=9.1.1",
-    "pytest-insta>=0.4.1",
 ]
 
+[dependency-groups]
+dev = [
+    "black>=24.4.2",
+    "pytest-insta>=0.3.0",
+    "pytest-cov>=6.0.0",
+]
 
 [tool.uv.sources]
 beet = { git = "https://github.com/edayot/beet", branch = "runtime_minecraft_version" }
