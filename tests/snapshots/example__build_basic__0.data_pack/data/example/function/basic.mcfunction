@@ -47,3 +47,4 @@ data modify storage example:main result_bolt set compute default aaa:bbb
 data modify storage example:main result_bolt set compute default {type:"minecraft:sum",operands:["aaa:bbb","ccc:ddd"]}
 data modify storage example:main result_bolt set compute default {type:"minecraft:constant",value:1}
 data modify storage example:main result_bolt set compute default {type:"minecraft:sum",operands:[1,1]}
+compute default {type:"minecraft:sum",operands:[1,1]}

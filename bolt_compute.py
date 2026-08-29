@@ -22,6 +22,11 @@ FUNCTION_OVERRIDES = [
 
 def iter_compute_tree(tree: CommandTree):
     if tree.children:
+        compute = tree.children["compute"]
+        if compute.children:
+            yield compute
+
+
         data = tree.children["data"]
         if data.children:
             modify = data.children["modify"]
@@ -53,6 +58,7 @@ def iter_compute_tree(tree: CommandTree):
                                     index = insert.children["index"]
                                     if index.children:
                                         compute = index.children["compute"]
+                                        yield compute
                                         
 @dataclass
 class MutableDepth:

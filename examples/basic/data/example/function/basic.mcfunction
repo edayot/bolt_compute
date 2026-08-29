@@ -92,3 +92,6 @@ data modify storage example:main result_bolt set compute bolt ("aaa:bbb")
 data modify storage example:main result_bolt set compute bolt ("aaa:bbb" + "ccc:ddd")
 data modify storage example:main result_bolt set compute bolt (1)
 data modify storage example:main result_bolt set compute bolt (1+1)
+
+
+compute bolt (1+1)
