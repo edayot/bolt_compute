@@ -46,7 +46,7 @@ compute bolt (y * y) # compute default {type:"minecraft:product",operands:["name
 
 ### Operators
 
-'+', '-', '*', are supported, as well as parentheses for grouping.
+`+`, `-`, `*`, are supported, as well as parentheses for grouping.
 
 ### Functions
 
