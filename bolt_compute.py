@@ -200,7 +200,6 @@ def parse_operation(stream: TokenStream, depth: int) -> AstComputeOperation:
         return AstComputeOperation.from_value(lvalue, depth=depth)
     
     lvalue = parse_literal(stream, depth=depth+1)
-    print(lvalue)
     token = stream.expect("operation")
     rvalue = parse_operation(stream, depth=depth+1)
     op: Operation = token.value # pyright: ignore[reportAssignmentType]
@@ -226,8 +225,8 @@ def parse_list(stream: TokenStream, depth: int):
 
 
 def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
+    bolt_expression_parser = delegate("bolt:primary")
     with stream.checkpoint() as commit:
-        bolt_expression_parser = delegate("bolt:primary")
         bolt_node: AstNode = bolt_expression_parser(stream)
         # parse and return value type
         if isinstance(bolt_node, AstValue):
