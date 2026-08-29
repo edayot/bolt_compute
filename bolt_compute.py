@@ -1,10 +1,35 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Generator, Literal, Optional, Self, Type, TypedDict, overload
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Literal,
+    Optional,
+    Self,
+    Type,
+    TypedDict,
+    overload,
+)
 
 from beet import Context
 from beet.core.utils import JsonDict, required_field
 from bolt import AstCall, AstFormatString, AstIdentifier, AstValue
-from mecha import AbstractNode, AstNbtPath, AstNbtPathKey, AstNbtPathSubscript, AstNode, AstNumber, AstResourceLocation, Mecha, CommandTree, MultilineParser, NbtPathParser, Rule, delegate, rule
+from mecha import (
+    AbstractNode,
+    AstNbtPath,
+    AstNbtPathKey,
+    AstNbtPathSubscript,
+    AstNode,
+    AstNumber,
+    AstResourceLocation,
+    Mecha,
+    CommandTree,
+    MultilineParser,
+    NbtPathParser,
+    Rule,
+    delegate,
+    rule,
+)
 from mecha.utils import QuoteHelper, number_to_string
 from bolt.pattern import STRING_PATTERN, RESOURCE_LOCATION_PATTERN
 from tokenstream import TokenStream, Token, set_location, InvalidSyntax
@@ -20,12 +45,12 @@ FUNCTION_OVERRIDES = [
     "product",
 ]
 
+
 def iter_compute_tree(tree: CommandTree):
     if tree.children:
         compute = tree.children["compute"]
         if compute.children:
             yield compute
-
 
         data = tree.children["data"]
         if data.children:
@@ -59,14 +84,17 @@ def iter_compute_tree(tree: CommandTree):
                                     if index.children:
                                         compute = index.children["compute"]
                                         yield compute
-                                        
+
+
 @dataclass
 class MutableDepth:
     value: int
 
+
 @dataclass(frozen=True, slots=True)
 class AstComputeStorage(AstNode):
     """Ast bolt compute storage node."""
+
     storage: AstComputeResourceLocation = required_field()
     path: AstNbtPath = required_field()
     depth: MutableDepth = required_field()
@@ -81,6 +109,7 @@ class AstComputeStorage(AstNode):
         """Return a bool node from the given value."""
         return AstComputeStorage(storage=storage, path=path, depth=MutableDepth(depth))
 
+
 @dataclass(frozen=True, slots=True)
 class AstComputeBoltValue(AstNode):
     value: AstNode = required_field()
@@ -93,6 +122,7 @@ class AstComputeBoltValue(AstNode):
         depth: int,
     ) -> Self:
         return cls(value=value, depth=MutableDepth(depth))
+
 
 @dataclass(frozen=True, slots=True)
 class AstComputeListCall(AstNode):
@@ -110,6 +140,7 @@ class AstComputeListCall(AstNode):
         """Return a bool node from the given value."""
         return cls(type=type, operands=operands, depth=MutableDepth(depth))
 
+
 @dataclass(frozen=True, slots=True)
 class AstComputeBinomial(AstNode):
     n: ValueType = required_field()
@@ -124,6 +155,7 @@ class AstComputeBinomial(AstNode):
         depth: int,
     ) -> Self:
         return cls(n=n, p=p, depth=MutableDepth(depth))
+
 
 @dataclass(frozen=True, slots=True)
 class AstComputeUniform(AstNode):
@@ -141,8 +173,6 @@ class AstComputeUniform(AstNode):
         return cls(minimum=minimum, maximum=maximum, depth=MutableDepth(depth))
 
 
-
-
 @dataclass(frozen=True, slots=True)
 class AstComputeNumber(AstNode):
     value: AstNumber = required_field()
@@ -158,24 +188,29 @@ class AstComputeNumber(AstNode):
         return cls(value=AstNumber.from_value(value), depth=MutableDepth(depth))
 
 
-
-type AstComputeSource = AstComputeStorage # future AstScoreStorage
+type AstComputeSource = AstComputeStorage  # future AstScoreStorage
 
 type ValueType = AstComputeOperation | AstComputeResourceLocation | AstComputeNumber | AstComputeSource | AstComputeBoltValue
 type Operation = Literal["+", "-", "/", "*"]
+
 
 @dataclass(frozen=True, slots=True)
 class AstBoltComputeRoot(AstNode):
     children: AstComputeOperation = required_field()
 
+
 @dataclass(frozen=True, slots=True)
-class AstComputeResourceLocation(AstNode): 
+class AstComputeResourceLocation(AstNode):
     resource_location: AstResourceLocation = required_field()
     depth: MutableDepth = required_field()
 
     @classmethod
-    def from_value(cls, value: Any, depth: int) -> "AstComputeResourceLocation": 
-        return AstComputeResourceLocation(resource_location=AstResourceLocation.from_value(value), depth=MutableDepth(depth))
+    def from_value(cls, value: Any, depth: int) -> "AstComputeResourceLocation":
+        return AstComputeResourceLocation(
+            resource_location=AstResourceLocation.from_value(value),
+            depth=MutableDepth(depth),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class AstComputeOperation(AstNode):
@@ -198,7 +233,9 @@ class AstComputeOperation(AstNode):
         depth: int = 0,
     ) -> AstComputeOperation:
         """Return a bool node from the given value."""
-        return AstComputeOperation(lvalue=lvalue, operation=operation, rvalue=rvalue, depth=MutableDepth(depth))
+        return AstComputeOperation(
+            lvalue=lvalue, operation=operation, rvalue=rvalue, depth=MutableDepth(depth)
+        )
 
 
 def parse_operation(stream: TokenStream, depth: int) -> AstComputeOperation:
@@ -209,34 +246,34 @@ def parse_operation(stream: TokenStream, depth: int) -> AstComputeOperation:
 def parse_additive(stream: TokenStream, depth: int) -> AstComputeOperation:
     """Parse additive operations (+, -) - lowest precedence."""
     lvalue = parse_multiplicative(stream, depth)
-    
+
     while True:
         with stream.alternative():
             token = stream.expect("additive")
-            rvalue = parse_multiplicative(stream, depth+1)
+            rvalue = parse_multiplicative(stream, depth + 1)
             op: Operation = token.value  # pyright: ignore[reportAssignmentType]
             lvalue = AstComputeOperation.from_value(lvalue, op, rvalue, depth=depth)
-            lvalue.lvalue.depth.value +=1
+            lvalue.lvalue.depth.value += 1
             continue
         break
-    
+
     return lvalue
 
 
 def parse_multiplicative(stream: TokenStream, depth: int) -> AstComputeOperation:
     """Parse multiplicative operations (*, /) - highest precedence."""
     lvalue = parse_primary(stream, depth)
-    
+
     while True:
         with stream.alternative():
             token = stream.expect("multiplicative")
-            rvalue = parse_primary(stream, depth+1)
+            rvalue = parse_primary(stream, depth + 1)
             op: Operation = token.value  # pyright: ignore[reportAssignmentType]
             lvalue = AstComputeOperation.from_value(lvalue, op, rvalue, depth=depth)
-            lvalue.lvalue.depth.value +=1
+            lvalue.lvalue.depth.value += 1
             continue
         break
-    
+
     return lvalue
 
 
@@ -248,8 +285,9 @@ def parse_primary(stream: TokenStream, depth: int) -> ValueType:
         stream.expect("cparent")
         commit()
         return result
-    
+
     return parse_literal(stream, depth=depth)
+
 
 def parse_list(stream: TokenStream, depth: int):
     """Parse a comma-separated list of expressions inside brackets."""
@@ -260,7 +298,7 @@ def parse_list(stream: TokenStream, depth: int):
             stream.expect("cbracket")
             commit()
             break
-        values.append(parse_operation(stream, depth=depth+1))
+        values.append(parse_operation(stream, depth=depth + 1))
         follow = stream.expect_any("comma", "cbracket")
         match follow:
             case Token("cbracket"):
@@ -281,7 +319,9 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
                 return AstComputeNumber.from_value(bolt_node.value, depth=depth)
             elif isinstance(bolt_node.value, str):
                 commit()
-                return AstComputeResourceLocation.from_value(bolt_node.value, depth=depth)
+                return AstComputeResourceLocation.from_value(
+                    bolt_node.value, depth=depth
+                )
         elif isinstance(bolt_node, AstIdentifier):
             commit()
             return AstComputeBoltValue.from_value(bolt_node, depth=depth)
@@ -289,18 +329,23 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
             commit()
             return AstComputeBoltValue.from_value(bolt_node, depth=depth)
         elif isinstance(bolt_node, AstCall):
-            if isinstance(bolt_node.value, AstIdentifier) and bolt_node.value.value in FUNCTION_OVERRIDES:
-                raise InvalidSyntax(f"Python built-in sum collide with bolt_compute sum")
+            if (
+                isinstance(bolt_node.value, AstIdentifier)
+                and bolt_node.value.value in FUNCTION_OVERRIDES
+            ):
+                raise InvalidSyntax(
+                    f"Python built-in sum collide with bolt_compute sum"
+                )
             commit()
             return AstComputeBoltValue.from_value(bolt_node, depth=depth)
-        
+
         raise NotImplementedError(bolt_node)
 
     stream.crop()
     token = stream.expect_any("oparent", "number", "quotes", "storage", "call")
     match token:
         case Token("oparent"):
-            return parse_operation(stream, depth=depth+1)
+            return parse_operation(stream, depth=depth + 1)
         case Token("number"):
             return AstComputeNumber.from_value(token.value, depth=depth)
         case Token("quotes"):
@@ -315,26 +360,30 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
         case Token("call"):
             if token.value in ["maximum", "minimum", "average", "sum", "product"]:
                 stream.expect("oparent")
-                values = parse_list(stream, depth+1)
+                values = parse_list(stream, depth + 1)
                 if len(values) == 0:
-                    raise InvalidSyntax(f"Function {token.value} require at least one argument")
+                    raise InvalidSyntax(
+                        f"Function {token.value} require at least one argument"
+                    )
                 stream.expect("cparent")
                 return AstComputeListCall.from_value(token.value, values, depth)
             elif token.value == "binomial":
                 stream.expect("oparent")
-                N = parse_literal(stream, depth=depth+1)
+                N = parse_literal(stream, depth=depth + 1)
                 stream.expect("comma")
-                P = parse_literal(stream, depth=depth+1)
+                P = parse_literal(stream, depth=depth + 1)
                 cparent, comma = stream.expect("cparent", "comma")
-                if comma: stream.expect("cparent")
+                if comma:
+                    stream.expect("cparent")
                 return AstComputeBinomial.from_value(N, P, depth)
             elif token.value == "uniform":
                 stream.expect("oparent")
-                minimum = parse_literal(stream, depth=depth+1)
+                minimum = parse_literal(stream, depth=depth + 1)
                 stream.expect("comma")
-                maximum = parse_literal(stream, depth=depth+1)
+                maximum = parse_literal(stream, depth=depth + 1)
                 cparent, comma = stream.expect("cparent", "comma")
-                if comma: stream.expect("cparent")
+                if comma:
+                    stream.expect("cparent")
                 return AstComputeUniform.from_value(minimum, maximum, depth)
 
             raise NotImplementedError(token.value)
@@ -342,12 +391,9 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
     raise NotImplementedError("UNREACHABLE")
 
 
-
 def operation_parser(stream: TokenStream):
     """Parse operation."""
-    with stream.syntax(
-        bolt="bolt"
-    ):
+    with stream.syntax(bolt="bolt"):
         stream.expect("bolt")
     with stream.syntax(
         oparent=r"\(",
@@ -363,13 +409,12 @@ def operation_parser(stream: TokenStream):
         call="|".join(FUNCTION_OVERRIDES),
         quotes=r'"',
         resource=RESOURCE_LOCATION_PATTERN,
-        name=r'[a-z]([a-z0-9]+)?'
+        name=r"[a-z]([a-z0-9]+)?",
     ):
         stream.expect("oparent")
         operation = parse_operation(stream, depth=0)
         stream.expect("cparent", "end")
     return AstBoltComputeRoot(children=operation)
-
 
 
 @rule(AstComputeOperation)
@@ -383,26 +428,27 @@ def serialize_operation(node: AstComputeOperation, result: list[str]):
             case "+":
                 result.append('{type:"minecraft:sum",operands:[')
                 yield node.lvalue
-                result.append(',')
+                result.append(",")
                 yield node.rvalue
-                result.append(']}')
+                result.append("]}")
             case "-":
                 result.append('{type:"minecraft:sum",operands:[')
                 yield node.lvalue
-                result.append(',')
+                result.append(",")
                 result.append('{type:"minecraft:product",operands:[-1')
-                result.append(',')
+                result.append(",")
                 yield node.rvalue
-                result.append(']}')
-                result.append(']}')
+                result.append("]}")
+                result.append("]}")
             case "*":
                 result.append('{type:"minecraft:product",operands:[')
                 yield node.lvalue
-                result.append(',')
+                result.append(",")
                 yield node.rvalue
-                result.append(']}')
+                result.append("]}")
             case _:
                 raise NotImplementedError()
+
 
 @rule(AstBoltComputeRoot)
 def serialize_root(node: AstBoltComputeRoot, result: list[str]):
@@ -410,11 +456,15 @@ def serialize_root(node: AstBoltComputeRoot, result: list[str]):
     result.append(" ")
     yield node.children
 
+
 @rule(AstComputeResourceLocation)
 def serialize_resource_location(node: AstComputeResourceLocation, result: list[str]):
-    if node.depth.value != 0: result.append('"')
+    if node.depth.value != 0:
+        result.append('"')
     result.append(node.resource_location.get_canonical_value())
-    if node.depth.value != 0: result.append('"')
+    if node.depth.value != 0:
+        result.append('"')
+
 
 @rule(AstComputeStorage)
 def serialize_storage(node: AstComputeStorage, result: list[str]):
@@ -429,7 +479,7 @@ def serialize_storage(node: AstComputeStorage, result: list[str]):
 def serialize_bolt_value(node: AstComputeBoltValue, result: list[str]):
     if isinstance(node.value, (float, int)):
         yield AstComputeNumber.from_value(node.value, node.depth.value)
-    elif isinstance(node.value, str): 
+    elif isinstance(node.value, str):
         a = AstComputeResourceLocation.from_value(node.value, node.depth.value)
         yield a
 
@@ -444,36 +494,41 @@ def serialize_list_call(node: AstComputeListCall, result: list[str]):
         result.append(sep)
         sep = ","
         yield children
-    result.append(']}')
-
-
+    result.append("]}")
 
 
 @rule(AstComputeNumber)
-def serialize_compute_number(node: AstComputeNumber, result: list[str]): 
-    if node.depth.value == 0: result.append('{type:"minecraft:constant",value:')
+def serialize_compute_number(node: AstComputeNumber, result: list[str]):
+    if node.depth.value == 0:
+        result.append('{type:"minecraft:constant",value:')
     yield node.value
-    if node.depth.value == 0: result.append('}')
+    if node.depth.value == 0:
+        result.append("}")
+
 
 @rule(AstComputeBinomial)
-def serialize_compute_binomial(node: AstComputeBinomial, result: list[str]): 
+def serialize_compute_binomial(node: AstComputeBinomial, result: list[str]):
     result.append('{type:"minecraft:binomial",n:')
     yield node.n
-    result.append(',p:')
+    result.append(",p:")
     yield node.p
-    result.append('}')
+    result.append("}")
+
 
 @rule(AstComputeUniform)
-def serialize_compute_uniform(node: AstComputeUniform, result: list[str]): 
+def serialize_compute_uniform(node: AstComputeUniform, result: list[str]):
     result.append('{type:"minecraft:uniform",min:')
     yield node.minimum
-    result.append(',max:')
+    result.append(",max:")
     yield node.maximum
-    result.append('}')
+    result.append("}")
+
 
 def beet_default(ctx: Context):
     mc = ctx.inject(Mecha)
-    mc.spec.parsers["command:argument:minecraft:number_provider"] = MultilineParser(delegate("resource_location_or_nbt"))
+    mc.spec.parsers["command:argument:minecraft:number_provider"] = MultilineParser(
+        delegate("resource_location_or_nbt")
+    )
     rules = [
         serialize_operation,
         serialize_resource_location,
@@ -490,13 +545,16 @@ def beet_default(ctx: Context):
 
     for compute in iter_compute_tree(mc.spec.tree):
         if compute.children:
-            compute.children["bolt"] = CommandTree(**{
-                "type": "argument",
-                "executable": True,
-                "parser": "bolt_compute:operation_parser"
-            })
+            compute.children["bolt"] = CommandTree(
+                **{
+                    "type": "argument",
+                    "executable": True,
+                    "parser": "bolt_compute:operation_parser",
+                }
+            )
 
-    mc.spec.parsers["command:argument:bolt_compute:operation_parser"] = MultilineParser(operation_parser)
+    mc.spec.parsers["command:argument:bolt_compute:operation_parser"] = MultilineParser(
+        operation_parser
+    )
 
-        
     mc.spec.update()
