@@ -15,6 +15,9 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -34,7 +37,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION_BUMP: ${{ github.event.inputs.version_bump }}
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
           uv run pytest -vvv
           git config --global user.name "github-actions"
