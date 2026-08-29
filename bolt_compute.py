@@ -124,12 +124,13 @@ TARGETS = [
     "interacting_entity",
 ]
 
-
+type TargetType = Literal["fixed", "context"]
 @dataclass(frozen=True, slots=True)
 class AstComputeScore(AstNode):
     """Ast bolt compute storage node."""
 
     target: AstNode = required_field()
+    target_type: TargetType = required_field()
     score:  AstNode = required_field()
     scale:  Optional[AstNode] = required_field()
     depth: MutableDepth = required_field()
@@ -138,12 +139,13 @@ class AstComputeScore(AstNode):
     def from_value(
         cls,
         target: AstNode,
+        target_type: TargetType,
         score: AstNode,
         scale: Optional[AstNode],
         depth: int,
     ) -> Self:
         """Return a bool node from the given value."""
-        return cls(target=target, score=score, scale=scale, depth=MutableDepth(depth))
+        return cls(target=target, target_type=target_type, score=score, scale=scale, depth=MutableDepth(depth))
 
 @dataclass(frozen=True, slots=True)
 class AstComputeStorage(AstNode):
@@ -494,13 +496,22 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
                     stream.expect("cparent")
                 return AstComputeConditional.from_value(condition, on_true, on_false, depth)
         case Token("score"):
-            target = get_bolt_or_expect(stream, "target")
+            target_type = "literal"
+            target_type_score = "fixed"
+
+            with stream.checkpoint() as commit:
+                stream.expect("dot")
+                commit()
+                target_type = "target"
+                target_type_score = "context"
+
+            target = get_bolt_or_expect(stream, target_type)
             score = delegate("objective")(stream)
             with stream.checkpoint() as commit:
                 scale = stream.expect("integer")
                 commit()
-                return AstComputeScore.from_value(target, score, AstNumber(value=scale.value), depth)
-            return AstComputeScore.from_value(target, score, None, depth)
+                return AstComputeScore.from_value(target, target_type_score, score, AstNumber(value=scale.value), depth)
+            return AstComputeScore.from_value(target, target_type_score, score, None, depth)
 
 
     raise NotImplementedError(token.value)
@@ -524,6 +535,7 @@ def operation_parser(stream: TokenStream):
         obracket=r"\[",
         cbracket=r"\]",
         comma=r",",
+        dot=r"\.",
         double_equal=r"==",
         equal=r"=",
         additive=r"\+|\-",
@@ -665,9 +677,16 @@ def serialize_compute_conditional(node: AstComputeConditional, result: list[str]
 
 @rule(AstComputeScore)
 def serialize_compute_score(node: AstComputeScore, result: list[str]):
-    result.append('{type:"minecraft:score",target:"')
-    yield node.target
-    result.append('",score:"')
+    result.append('{type:"minecraft:score",target:')
+    if node.target_type == "context":
+        result.append('"')
+        yield node.target
+        result.append('"')
+    elif node.target_type == "fixed":
+        result.append('{type:"minecraft:fixed",name:"')
+        yield node.target
+        result.append('"}')
+    result.append(',score:"')
     yield node.score
     if node.scale:
         result.append('",scale:')
