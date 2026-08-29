@@ -16,6 +16,7 @@ from beet.core.utils import JsonDict, required_field
 from bolt import AstCall, AstFormatString, AstIdentifier, AstValue
 from mecha import (
     AbstractNode,
+    AstNbtCompound,
     AstNbtPath,
     AstNbtPathKey,
     AstNbtPathSubscript,
@@ -89,6 +90,27 @@ def iter_compute_tree(tree: CommandTree):
 @dataclass
 class MutableDepth:
     value: int
+
+
+type AstComputeSource = AstComputeStorage  # future AstScoreStorage
+
+type ValueType = (
+    AstComputeSource 
+    | AstComputeResourceLocation 
+    | AstComputeNumber 
+    | AstComputeBoltValue 
+    | AstComputeOperation 
+    | AstComputeListCall
+    | AstComputeBinomial
+    | AstComputeUniform
+)
+type Operation = Literal["+", "-", "/", "*"]
+
+
+
+@dataclass(frozen=True, slots=True)
+class AstBoltComputeRoot(AstNode):
+    children: AstComputeOperation = required_field()
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,6 +194,28 @@ class AstComputeUniform(AstNode):
     ) -> Self:
         return cls(minimum=minimum, maximum=maximum, depth=MutableDepth(depth))
 
+@dataclass(frozen=True, slots=True)
+class AstComputeConditional(AstNode):
+    condition: AstNbtCompound      = required_field()
+    on_true:   ValueType           = required_field()
+    on_false:  Optional[ValueType] = required_field()
+    depth:     MutableDepth        = required_field()
+
+    @classmethod
+    def from_value(
+        cls,
+        condition: AstNbtCompound,
+        on_true: ValueType,
+        on_false: Optional[ValueType],
+        depth: int,
+    ) -> Self:
+        return cls(
+            condition=condition,
+            on_true=on_true,
+            on_false=on_false,
+            depth=MutableDepth(depth),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class AstComputeNumber(AstNode):
@@ -187,16 +231,6 @@ class AstComputeNumber(AstNode):
         """Return a bool node from the given value."""
         return cls(value=AstNumber.from_value(value), depth=MutableDepth(depth))
 
-
-type AstComputeSource = AstComputeStorage  # future AstScoreStorage
-
-type ValueType = AstComputeOperation | AstComputeResourceLocation | AstComputeNumber | AstComputeSource | AstComputeBoltValue
-type Operation = Literal["+", "-", "/", "*"]
-
-
-@dataclass(frozen=True, slots=True)
-class AstBoltComputeRoot(AstNode):
-    children: AstComputeOperation = required_field()
 
 
 @dataclass(frozen=True, slots=True)
@@ -385,6 +419,25 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
                 if comma:
                     stream.expect("cparent")
                 return AstComputeUniform.from_value(minimum, maximum, depth)
+            elif token.value == "conditional":
+                stream.expect("oparent")
+                condition = delegate("resource_location_or_nbt")(stream)
+                stream.expect("comma")
+                on_true = parse_literal(stream, depth=depth + 1)
+
+                cparent, comma = stream.expect("cparent", "comma")
+                if comma:
+                    with stream.checkpoint() as commit:
+                        stream.expect("cparent")
+                        commit()
+                        return AstComputeConditional.from_value(condition, on_true, None, depth)
+
+                on_false = parse_literal(stream, depth=depth + 1)
+                cparent, comma = stream.expect("cparent", "comma")
+                if comma:
+                    stream.expect("cparent")
+                return AstComputeConditional.from_value(condition, on_true, on_false, depth)
+
 
             raise NotImplementedError(token.value)
 
@@ -524,6 +577,18 @@ def serialize_compute_uniform(node: AstComputeUniform, result: list[str]):
     result.append("}")
 
 
+@rule(AstComputeConditional)
+def serialize_compute_conditional(node: AstComputeConditional, result: list[str]):
+    result.append('{type:"minecraft:conditional",condition:')
+    yield node.condition
+    result.append(",on_true:")
+    yield node.on_true
+    if node.on_false:
+        result.append(',on_false:')
+        yield node.on_false
+    result.append("}")
+
+
 def beet_default(ctx: Context):
     mc = ctx.inject(Mecha)
     mc.spec.parsers["command:argument:minecraft:number_provider"] = MultilineParser(
@@ -539,6 +604,7 @@ def beet_default(ctx: Context):
         serialize_list_call,
         serialize_compute_binomial,
         serialize_compute_uniform,
+        serialize_compute_conditional,
     ]
     for r in rules:
         mc.serialize.add_rule(r)

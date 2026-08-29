@@ -95,3 +95,13 @@ data modify storage example:main result_bolt set compute bolt (1+1)
 
 
 compute bolt (1+1)
+
+compute bolt (conditional({
+    "type": "minecraft:value_check",
+    "value": {
+        "type": "minecraft:uniform",
+        "min": 0,
+        "max": 1
+    },
+    "range": 0
+}, 1, 0))
