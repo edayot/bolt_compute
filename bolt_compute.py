@@ -1,25 +1,17 @@
 from dataclasses import dataclass
 from typing import (
     Any,
-    Callable,
-    Generator,
     Literal,
     Optional,
     Self,
-    Type,
-    TypedDict,
-    overload,
 )
 
 from beet import Context
-from beet.core.utils import JsonDict, required_field
+from beet.core.utils import required_field
 from bolt import AstCall, AstFormatString, AstIdentifier, AstValue
 from mecha import (
-    AbstractNode,
     AstNbtCompound,
     AstNbtPath,
-    AstNbtPathKey,
-    AstNbtPathSubscript,
     AstNode,
     AstString,
     AstNumber,
@@ -27,13 +19,10 @@ from mecha import (
     Mecha,
     CommandTree,
     MultilineParser,
-    NbtPathParser,
-    Rule,
     delegate,
     rule,
 )
-from mecha.utils import QuoteHelper, number_to_string
-from bolt.pattern import STRING_PATTERN, RESOURCE_LOCATION_PATTERN
+from bolt.pattern import RESOURCE_LOCATION_PATTERN
 from tokenstream import TokenPattern, TokenStream, Token, set_location, InvalidSyntax
 
 FUNCTION_OVERRIDES = [
@@ -536,8 +525,6 @@ def operation_parser(stream: TokenStream):
         cbracket=r"\]",
         comma=r",",
         dot=r"\.",
-        double_equal=r"==",
-        equal=r"=",
         additive=r"\+|\-",
         multiplicative=r"\*|\/",
         conditional=r"if|else",
@@ -548,7 +535,6 @@ def operation_parser(stream: TokenStream):
         target="|".join(TARGETS),
         call="|".join(FUNCTION_OVERRIDES),
         quotes=r'"',
-        resource=RESOURCE_LOCATION_PATTERN,
     ):
         stream.expect("oparent")
         operation = parse_operation(stream, depth=0)

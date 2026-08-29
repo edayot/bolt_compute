@@ -48,3 +48,12 @@ data modify storage example:main result_bolt set compute default {type:"minecraf
 data modify storage example:main result_bolt set compute default {type:"minecraft:constant",value:1}
 data modify storage example:main result_bolt set compute default {type:"minecraft:sum",operands:[1,1]}
 compute default {type:"minecraft:sum",operands:[1,1]}
+compute default {type:"minecraft:conditional",condition:{type: "minecraft:value_check", value: {type: "minecraft:uniform", min: 0, max: 1}, range: 0},on_true:1,on_false:0}
+compute default {type:"minecraft:conditional",condition:{type: "minecraft:value_check", value: {type: "minecraft:uniform", min: 0, max: 1}, range: 0},on_true:1,on_false:0}
+compute default {type:"minecraft:conditional",condition:{},on_true:220210,on_false:23}
+scoreboard players set @s dummy 1
+compute default {type:"minecraft:score",target:"this",score:"minecraft.dummy"}
+compute default {type:"minecraft:score",target:"this",score:"minecraft.dummy",scale:42}
+compute default {type:"minecraft:score",target:"attacker",score:"minecarft.dummy"}
+compute default {type:"minecraft:score",target:{type:"minecraft:fixed",name:"attacker"},score:"minecarft.dummy"}
+compute default {type:"minecraft:score",target:{type:"minecraft:fixed",name:"jeb_"},score:"minecarft.dummy"}
