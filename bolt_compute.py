@@ -54,13 +54,16 @@ def iter_compute_tree(tree: CommandTree):
                                     if index.children:
                                         compute = index.children["compute"]
                                         
+@dataclass
+class MutableDepth:
+    value: int
 
 @dataclass(frozen=True, slots=True)
 class AstComputeStorage(AstNode):
     """Ast bolt compute storage node."""
     storage: AstComputeResourceLocation = required_field()
     path: AstNbtPath = required_field()
-    depth: int = required_field()
+    depth: MutableDepth = required_field()
 
     @classmethod
     def from_value(
@@ -70,12 +73,12 @@ class AstComputeStorage(AstNode):
         depth: int,
     ) -> AstComputeStorage:
         """Return a bool node from the given value."""
-        return AstComputeStorage(storage=storage, path=path, depth=depth)
+        return AstComputeStorage(storage=storage, path=path, depth=MutableDepth(depth))
 
 @dataclass(frozen=True, slots=True)
 class AstComputeBoltValue(AstNode):
     value: AstNode = required_field()
-    depth: int = required_field()
+    depth: MutableDepth = required_field()
 
     @classmethod
     def from_value(
@@ -83,13 +86,13 @@ class AstComputeBoltValue(AstNode):
         value: AstNode,
         depth: int,
     ) -> Self:
-        return cls(value=value, depth=depth)
+        return cls(value=value, depth=MutableDepth(depth))
 
 @dataclass(frozen=True, slots=True)
 class AstComputeListCall(AstNode):
     type: str = required_field()
     operands: list[ValueType] = required_field()
-    depth: int = required_field()
+    depth: MutableDepth = required_field()
 
     @classmethod
     def from_value(
@@ -99,13 +102,13 @@ class AstComputeListCall(AstNode):
         depth: int,
     ) -> Self:
         """Return a bool node from the given value."""
-        return cls(type=type, operands=operands, depth=depth)
+        return cls(type=type, operands=operands, depth=MutableDepth(depth))
 
 @dataclass(frozen=True, slots=True)
 class AstComputeBinomial(AstNode):
     n: ValueType = required_field()
     p: ValueType = required_field()
-    depth: int = required_field()
+    depth: MutableDepth = required_field()
 
     @classmethod
     def from_value(
@@ -114,13 +117,13 @@ class AstComputeBinomial(AstNode):
         p: ValueType,
         depth: int,
     ) -> Self:
-        return cls(n=n, p=p, depth=depth)
+        return cls(n=n, p=p, depth=MutableDepth(depth))
 
 @dataclass(frozen=True, slots=True)
 class AstComputeUniform(AstNode):
     minimum: ValueType = required_field()
     maximum: ValueType = required_field()
-    depth: int = required_field()
+    depth: MutableDepth = required_field()
 
     @classmethod
     def from_value(
@@ -129,7 +132,7 @@ class AstComputeUniform(AstNode):
         maximum: ValueType,
         depth: int,
     ) -> Self:
-        return cls(minimum=minimum, maximum=maximum, depth=depth)
+        return cls(minimum=minimum, maximum=maximum, depth=MutableDepth(depth))
 
 
 
@@ -137,7 +140,7 @@ class AstComputeUniform(AstNode):
 @dataclass(frozen=True, slots=True)
 class AstComputeNumber(AstNode):
     value: AstNumber = required_field()
-    depth: int = required_field()
+    depth: MutableDepth = required_field()
 
     @classmethod
     def from_value(
@@ -146,7 +149,7 @@ class AstComputeNumber(AstNode):
         depth: int,
     ) -> Self:
         """Return a bool node from the given value."""
-        return cls(value=AstNumber.from_value(value), depth=depth)
+        return cls(value=AstNumber.from_value(value), depth=MutableDepth(depth))
 
 
 
@@ -162,11 +165,11 @@ class AstBoltComputeRoot(AstNode):
 @dataclass(frozen=True, slots=True)
 class AstComputeResourceLocation(AstNode): 
     resource_location: AstResourceLocation = required_field()
-    depth: int = required_field()
+    depth: MutableDepth = required_field()
 
     @classmethod
     def from_value(cls, value: Any, depth: int) -> "AstComputeResourceLocation": 
-        return AstComputeResourceLocation(resource_location=AstResourceLocation.from_value(value), depth=depth)
+        return AstComputeResourceLocation(resource_location=AstResourceLocation.from_value(value), depth=MutableDepth(depth))
 
 @dataclass(frozen=True, slots=True)
 class AstComputeOperation(AstNode):
@@ -176,7 +179,7 @@ class AstComputeOperation(AstNode):
     operation: Optional[Operation] = required_field()
     rvalue: Optional[ValueType] = required_field()
 
-    depth: int = required_field()
+    depth: MutableDepth = required_field()
 
     parser = "bolt_compute:parse_operation"
 
@@ -189,7 +192,7 @@ class AstComputeOperation(AstNode):
         depth: int = 0,
     ) -> AstComputeOperation:
         """Return a bool node from the given value."""
-        return AstComputeOperation(lvalue=lvalue, operation=operation, rvalue=rvalue, depth=depth)
+        return AstComputeOperation(lvalue=lvalue, operation=operation, rvalue=rvalue, depth=MutableDepth(depth))
 
 
 def parse_operation(stream: TokenStream, depth: int) -> AstComputeOperation:
@@ -199,14 +202,15 @@ def parse_operation(stream: TokenStream, depth: int) -> AstComputeOperation:
 
 def parse_additive(stream: TokenStream, depth: int) -> AstComputeOperation:
     """Parse additive operations (+, -) - lowest precedence."""
-    lvalue = parse_multiplicative(stream, depth + 1)
+    lvalue = parse_multiplicative(stream, depth)
     
     while True:
         with stream.alternative():
             token = stream.expect("additive")
-            rvalue = parse_multiplicative(stream, depth + 1)
+            rvalue = parse_multiplicative(stream, depth+1)
             op: Operation = token.value  # pyright: ignore[reportAssignmentType]
             lvalue = AstComputeOperation.from_value(lvalue, op, rvalue, depth=depth)
+            lvalue.lvalue.depth.value +=1
             continue
         break
     
@@ -215,14 +219,15 @@ def parse_additive(stream: TokenStream, depth: int) -> AstComputeOperation:
 
 def parse_multiplicative(stream: TokenStream, depth: int) -> AstComputeOperation:
     """Parse multiplicative operations (*, /) - highest precedence."""
-    lvalue = parse_primary(stream, depth + 1)
+    lvalue = parse_primary(stream, depth)
     
     while True:
         with stream.alternative():
             token = stream.expect("multiplicative")
-            rvalue = parse_primary(stream, depth + 1)
+            rvalue = parse_primary(stream, depth+1)
             op: Operation = token.value  # pyright: ignore[reportAssignmentType]
             lvalue = AstComputeOperation.from_value(lvalue, op, rvalue, depth=depth)
+            lvalue.lvalue.depth.value +=1
             continue
         break
     
@@ -241,6 +246,7 @@ def parse_primary(stream: TokenStream, depth: int) -> ValueType:
     return parse_literal(stream, depth=depth)
 
 def parse_list(stream: TokenStream, depth: int):
+    """Parse a comma-separated list of expressions inside brackets."""
     stream.expect("obracket")
     values: list[ValueType] = []
     while True:
@@ -248,7 +254,7 @@ def parse_list(stream: TokenStream, depth: int):
             stream.expect("cbracket")
             commit()
             break
-        values.append(parse_literal(stream, depth=depth+1))
+        values.append(parse_operation(stream, depth=depth+1))
         follow = stream.expect_any("comma", "cbracket")
         match follow:
             case Token("cbracket"):
@@ -355,7 +361,7 @@ def operation_parser(stream: TokenStream):
     ):
         stream.expect("oparent")
         operation = parse_operation(stream, depth=0)
-        stream.expect("cparent")
+        stream.expect("cparent", "end")
     return AstBoltComputeRoot(children=operation)
 
 
@@ -400,9 +406,9 @@ def serialize_root(node: AstBoltComputeRoot, result: list[str]):
 
 @rule(AstComputeResourceLocation)
 def serialize_resource_location(node: AstComputeResourceLocation, result: list[str]):
-    if node.depth != 0: result.append('"')
+    if node.depth.value != 0: result.append('"')
     result.append(node.resource_location.get_canonical_value())
-    if node.depth != 0: result.append('"')
+    if node.depth.value != 0: result.append('"')
 
 @rule(AstComputeStorage)
 def serialize_storage(node: AstComputeStorage, result: list[str]):
@@ -416,9 +422,10 @@ def serialize_storage(node: AstComputeStorage, result: list[str]):
 @rule(AstComputeBoltValue)
 def serialize_bolt_value(node: AstComputeBoltValue, result: list[str]):
     if isinstance(node.value, (float, int)):
-        yield AstComputeNumber.from_value(node.value, node.depth)
+        yield AstComputeNumber.from_value(node.value, node.depth.value)
     elif isinstance(node.value, str): 
-        yield AstComputeResourceLocation.from_value(node.value, node.depth)
+        a = AstComputeResourceLocation.from_value(node.value, node.depth.value)
+        yield a
 
 
 @rule(AstComputeListCall)
@@ -438,9 +445,9 @@ def serialize_list_call(node: AstComputeListCall, result: list[str]):
 
 @rule(AstComputeNumber)
 def serialize_compute_number(node: AstComputeNumber, result: list[str]): 
-    if node.depth == 0: result.append('{type:"minecraft:constant",value:')
+    if node.depth.value == 0: result.append('{type:"minecraft:constant",value:')
     yield node.value
-    if node.depth == 0: result.append('}')
+    if node.depth.value == 0: result.append('}')
 
 @rule(AstComputeBinomial)
 def serialize_compute_binomial(node: AstComputeBinomial, result: list[str]): 
