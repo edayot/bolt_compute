@@ -125,3 +125,18 @@ compute bolt (
 #  on_true    |       on_false
 #         condition
 )
+
+scoreboard players set @s dummy 1
+compute bolt (
+    (score this minecraft.dummy)
+)
+compute bolt (
+    (score this minecraft.dummy 42)
+)
+
+my_score = "minecarft.dummy"
+my_thing = "attacker"
+
+compute bolt (
+    (score my_thing my_score)
+)

@@ -21,6 +21,7 @@ from mecha import (
     AstNbtPathKey,
     AstNbtPathSubscript,
     AstNode,
+    AstString,
     AstNumber,
     AstResourceLocation,
     Mecha,
@@ -33,7 +34,7 @@ from mecha import (
 )
 from mecha.utils import QuoteHelper, number_to_string
 from bolt.pattern import STRING_PATTERN, RESOURCE_LOCATION_PATTERN
-from tokenstream import TokenStream, Token, set_location, InvalidSyntax
+from tokenstream import TokenPattern, TokenStream, Token, set_location, InvalidSyntax
 
 FUNCTION_OVERRIDES = [
     "average",
@@ -92,7 +93,7 @@ class MutableDepth:
     value: int
 
 
-type AstComputeSource = AstComputeStorage  # future AstScoreStorage
+type AstComputeSource = AstComputeStorage | AstComputeScore
 
 type ValueType = (
     AstComputeSource 
@@ -113,6 +114,36 @@ type Operation = Literal["+", "-", "/", "*"]
 class AstBoltComputeRoot(AstNode):
     children: ValueType = required_field()
 
+
+TARGETS = [
+    "this",
+    "attacker",
+    "direct_attacker",
+    "attacking_player",
+    "target_entity",
+    "interacting_entity",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class AstComputeScore(AstNode):
+    """Ast bolt compute storage node."""
+
+    target: AstNode = required_field()
+    score:  AstNode = required_field()
+    scale:  Optional[AstNode] = required_field()
+    depth: MutableDepth = required_field()
+
+    @classmethod
+    def from_value(
+        cls,
+        target: AstNode,
+        score: AstNode,
+        scale: Optional[AstNode],
+        depth: int,
+    ) -> Self:
+        """Return a bool node from the given value."""
+        return cls(target=target, score=score, scale=scale, depth=MutableDepth(depth))
 
 @dataclass(frozen=True, slots=True)
 class AstComputeStorage(AstNode):
@@ -401,7 +432,7 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
         raise NotImplementedError(bolt_node)
 
     stream.crop()
-    token = stream.expect_any("oparent", "number", "quotes", "storage", "call")
+    token = stream.expect_any("oparent", "number", "quotes", "storage", "call", "score")
     match token:
         case Token("oparent"):
             return parse_operation(stream, depth=depth + 1)
@@ -462,12 +493,26 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
                 if comma:
                     stream.expect("cparent")
                 return AstComputeConditional.from_value(condition, on_true, on_false, depth)
+        case Token("score"):
+            target = get_bolt_or_expect(stream, "target")
+            score = delegate("objective")(stream)
+            with stream.checkpoint() as commit:
+                scale = stream.expect("integer")
+                commit()
+                return AstComputeScore.from_value(target, score, AstNumber(value=scale.value), depth)
+            return AstComputeScore.from_value(target, score, None, depth)
 
 
-            raise NotImplementedError(token.value)
+    raise NotImplementedError(token.value)
 
-    raise NotImplementedError("UNREACHABLE")
 
+def get_bolt_or_expect(stream: TokenStream, pattern: TokenPattern) -> AstNode | AstString:
+    with stream.checkpoint() as commit:
+        node = delegate("bolt:primary")(stream)
+        commit()
+        return AstString(value=node)
+    token = stream.expect(pattern)
+    return AstString(value=token.value)
 
 def operation_parser(stream: TokenStream):
     """Parse operation."""
@@ -484,12 +529,14 @@ def operation_parser(stream: TokenStream):
         additive=r"\+|\-",
         multiplicative=r"\*|\/",
         conditional=r"if|else",
+        integer=r"[+-]?[0-9]+",
         number=r"[+-]?([0-9]*[.])?[0-9]+",
         storage=r"storage",
+        score=r"score",
+        target="|".join(TARGETS),
         call="|".join(FUNCTION_OVERRIDES),
         quotes=r'"',
         resource=RESOURCE_LOCATION_PATTERN,
-        name=r"[a-z]([a-z0-9]+)?",
     ):
         stream.expect("oparent")
         operation = parse_operation(stream, depth=0)
@@ -616,6 +663,22 @@ def serialize_compute_conditional(node: AstComputeConditional, result: list[str]
     result.append("}")
 
 
+@rule(AstComputeScore)
+def serialize_compute_score(node: AstComputeScore, result: list[str]):
+    result.append('{type:"minecraft:score",target:"')
+    yield node.target
+    result.append('",score:"')
+    yield node.score
+    if node.scale:
+        result.append('",scale:')
+        yield node.scale
+        result.append("}")
+    else:
+        result.append('"}')
+
+
+
+
 def beet_default(ctx: Context):
     mc = ctx.inject(Mecha)
     mc.spec.parsers["command:argument:minecraft:number_provider"] = MultilineParser(
@@ -632,6 +695,7 @@ def beet_default(ctx: Context):
         serialize_compute_binomial,
         serialize_compute_uniform,
         serialize_compute_conditional,
+        serialize_compute_score,
     ]
     for r in rules:
         mc.serialize.add_rule(r)
