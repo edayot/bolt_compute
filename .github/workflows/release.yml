@@ -45,7 +45,6 @@ jobs:
 
           git add pyproject.toml
           git add uv.lock
-          git add .coverage
           git commit -m "$(uv version --short)"
           git tag -a $(uv version --short) -m "$(uv version --short)"
           git push origin $(uv version --short)
