@@ -105,3 +105,23 @@ compute bolt (conditional({
     },
     "range": 0
 }, 1, 0))
+
+compute bolt (
+    1 if {
+        "type": "minecraft:value_check",
+        "value": {
+            "type": "minecraft:uniform",
+            "min": 0,
+            "max": 1
+        },
+        "range": 0
+    } else 0
+)
+
+compute bolt (
+    220210 if {} else 23
+#    ^        ^       ^
+#    |        |       |
+#  on_true    |       on_false
+#         condition
+)

@@ -103,6 +103,7 @@ type ValueType = (
     | AstComputeListCall
     | AstComputeBinomial
     | AstComputeUniform
+    | AstComputeConditional
 )
 type Operation = Literal["+", "-", "/", "*"]
 
@@ -110,7 +111,7 @@ type Operation = Literal["+", "-", "/", "*"]
 
 @dataclass(frozen=True, slots=True)
 class AstBoltComputeRoot(AstNode):
-    children: AstComputeOperation = required_field()
+    children: ValueType = required_field()
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,12 +273,36 @@ class AstComputeOperation(AstNode):
         )
 
 
-def parse_operation(stream: TokenStream, depth: int) -> AstComputeOperation:
+def parse_operation(stream: TokenStream, depth: int) -> ValueType:
     """Parse operations with correct precedence: additive (lower) then multiplicative (higher)."""
-    return parse_additive(stream, depth)
+    return parse_conditional(stream, depth)
 
 
-def parse_additive(stream: TokenStream, depth: int) -> AstComputeOperation:
+def parse_conditional(stream: TokenStream, depth: int) -> ValueType:
+    """Parse conditional expressions: value if condition else value if condition else value"""
+    on_true = parse_additive(stream, depth)
+    
+    while True:
+        with stream.alternative():
+            token = stream.expect("conditional")
+            if token.value == "else": raise InvalidSyntax("Cannot have an `else` statement without a preceding `if` statement")
+            on_true.depth.value += 1
+            # token.value == "if"
+            condition = delegate("resource_location_or_nbt")(stream)
+            
+            token = stream.expect("conditional")
+            if token.value == "if": raise InvalidSyntax("Cannot have an `if` statement without a preceding `else` statement")
+            
+            # Recursively parse the else clause (which could be another conditional)
+            on_false = parse_conditional(stream, depth+1)
+            on_true = AstComputeConditional.from_value(condition, on_true, on_false, depth)
+            continue
+        break
+    
+    return on_true
+
+
+def parse_additive(stream: TokenStream, depth: int) -> ValueType:
     """Parse additive operations (+, -) - lowest precedence."""
     lvalue = parse_multiplicative(stream, depth)
 
@@ -294,7 +319,7 @@ def parse_additive(stream: TokenStream, depth: int) -> AstComputeOperation:
     return lvalue
 
 
-def parse_multiplicative(stream: TokenStream, depth: int) -> AstComputeOperation:
+def parse_multiplicative(stream: TokenStream, depth: int) -> ValueType:
     """Parse multiplicative operations (*, /) - highest precedence."""
     lvalue = parse_primary(stream, depth)
 
@@ -454,9 +479,11 @@ def operation_parser(stream: TokenStream):
         obracket=r"\[",
         cbracket=r"\]",
         comma=r",",
+        double_equal=r"==",
         equal=r"=",
         additive=r"\+|\-",
         multiplicative=r"\*|\/",
+        conditional=r"if|else",
         number=r"[+-]?([0-9]*[.])?[0-9]+",
         storage=r"storage",
         call="|".join(FUNCTION_OVERRIDES),
