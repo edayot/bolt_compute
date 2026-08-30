@@ -21,6 +21,12 @@ beet = { git = "https://github.com/edayot/beet", branch = "runtime_minecraft_ver
 mecha = { git = "https://github.com/edayot/beet/", branch = "runtime_minecraft_version", subdirectory = "packages/mecha" }
 bolt = { git = "https://github.com/edayot/beet/", branch = "runtime_minecraft_version", subdirectory = "packages/bolt" }
 
+# [tool.uv.sources]
+# beet = { path = "../beet", editable = true }
+# mecha = { path = "../beet/packages/mecha", editable = true }
+# bolt = { path = "../beet/packages/bolt", editable = true }
+
+
 [build-system]
 requires = ["hatchling>=1.27.0"]
 build-backend = "hatchling.build"
