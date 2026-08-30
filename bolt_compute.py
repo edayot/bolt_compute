@@ -486,8 +486,8 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
                     stream.expect("cparent")
                 return AstComputeConditional.from_value(condition, on_true, on_false, depth)
         case Token("score"):
-            with stream.syntax(**stream.data["bolt_compute_keywords"]):
-                target = get_bolt_or_expect(stream, "target")
+            # with stream.syntax(**stream.data["bolt_compute_keywords"]):
+            target = get_bolt_or_expect(stream, "target")
             target_type = "context"
             if isinstance(target.value, str): 
                 if target.value == "fixed": 
@@ -537,9 +537,9 @@ def operation_parser(stream: TokenStream):
         score=r"score",
         target="|".join(TARGETS),
         call="|".join(FUNCTION_OVERRIDES),
-        quotes=r'"',
+        quotes=r'"|\'',
     ):
-        with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score"]}):
+        with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "call", "target"]}):
             stream.expect("oparent")
             operation = parse_operation(stream, depth=0)
             stream.expect("cparent", "end")

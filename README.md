@@ -53,12 +53,28 @@ compute bolt (y * y) # compute default {type:"minecraft:product",operands:["name
 Built-in functions are supported, such as : 
 - `average` expect a list using square brackets, e.g. `average([1,2,3])`
 - `binomial` expect N and P, can be expressions, e.g. `binomial(10, 0.5)`
-- `conditional` currently not implemented
+- `conditional` expect a condition (as a inline predicate), on_true and on_false values as expressions, e.g. `conditional({}, 1, 0)`
 - `maximum` expect a list using square brackets, e.g. `maximum([1,2,3])`
 - `minimum` expect a list using square brackets, e.g. `minimum([1,2,3])`
 - `uniform` expect two number providers, can be expressions, e.g. `uniform(1, 10)`
 - `sum` expect a list using square brackets, e.g. `sum([1,2,3])`
 - `product` expect a list using square brackets, e.g. `product([1,2,3])`
+
+### If-else expressions
+
+If-else expressions are supported, and equivalent to the `conditional` function, for example:
+
+```mcfunction
+compute bolt (
+    220210 if {} else 23
+#    ^        ^       ^
+#    |        |       |
+#  on_true    |       on_false
+#             |
+#   predicate condition
+)
+```
+
 
 ### Multiline expressions
 

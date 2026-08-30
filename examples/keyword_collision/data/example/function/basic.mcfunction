@@ -13,10 +13,19 @@ compute bolt ((storage storage storage))
 compute bolt ((storage storage if))
 
 
-score = "camion"
 
 compute bolt ((score this score))
 compute bolt ((score this else))
 compute bolt ((score this if))
 compute bolt ((score this storage))
 compute bolt ((score this if))
+
+compute bolt (score this this)
+compute bolt (score this sum)
+compute bolt (score this average)
+
+
+compute bolt (score "this" this)
+compute bolt (score this sum)
+compute bolt (score 'this' average)
+
