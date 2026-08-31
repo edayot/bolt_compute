@@ -98,10 +98,13 @@ type ValueType = (
 type Operation = Literal["+", "-", "/", "*"]
 
 
+type BoltType = Literal["default", "block", "entity"]
 
 @dataclass(frozen=True, slots=True)
 class AstBoltComputeRoot(AstNode):
+    bolt_type: BoltType = required_field()
     children: ValueType = required_field()
+    argument_node: AstNode = required_field()
 
 
 TARGETS = [
@@ -519,8 +522,24 @@ def get_bolt_or_expect(stream: TokenStream, pattern: TokenPattern) -> AstString:
 
 def operation_parser(stream: TokenStream):
     """Parse operation."""
-    with stream.syntax(bolt="bolt"):
-        stream.expect("bolt")
+    with stream.syntax(bolt=r"bolt_entity|bolt_block|bolt"):
+        token = stream.expect("bolt")
+        bolt_token_value: BoltType = token.value # pyright: ignore[reportAssignmentType]
+        bolt_type = {
+            "bolt": "default",
+            "bolt_entity": "entity",
+            "bolt_block": "block",
+        }[bolt_token_value]
+        argument_node: AstNode | None = None
+        match bolt_token_value:
+            case "bolt": 
+                ...
+            case "bolt_entity":
+                argument_node = delegate("entity")(stream)
+            case "bolt_block":
+                argument_node = delegate("block_pos")(stream)
+            case _:
+                raise InvalidSyntax(f"{bolt_type} is not implemented")
     with stream.syntax(
         oparent=r"\(",
         cparent=r"\)",
@@ -540,10 +559,8 @@ def operation_parser(stream: TokenStream):
         quotes=r'"|\'',
     ):
         with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "call", "target"]}):
-            stream.expect("oparent")
             operation = parse_operation(stream, depth=0)
-            stream.expect("cparent", "end")
-    return AstBoltComputeRoot(children=operation)
+    return AstBoltComputeRoot(bolt_type=bolt_type, argument_node=argument_node, children=operation)
 
 
 @rule(AstComputeOperation)
@@ -581,8 +598,11 @@ def serialize_operation(node: AstComputeOperation, result: list[str]):
 
 @rule(AstBoltComputeRoot)
 def serialize_root(node: AstBoltComputeRoot, result: list[str]):
-    result.append("default")
+    result.append(node.bolt_type)
     result.append(" ")
+    if node.argument_node:
+        yield node.argument_node
+        result.append(" ")
     yield node.children
 
 
