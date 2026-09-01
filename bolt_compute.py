@@ -105,6 +105,7 @@ class AstBoltComputeRoot(AstNode):
     bolt_type: BoltType = required_field()
     children: ValueType = required_field()
     argument_node: AstNode = required_field()
+    operation_type: Literal["float", "integer"] = required_field()
 
 
 TARGETS = [
@@ -430,7 +431,10 @@ def parse_literal(stream: TokenStream, depth: int = 0) -> ValueType:
     token = stream.expect_any("oparent", "number", "quotes", "storage", "call", "score")
     match token:
         case Token("oparent"):
-            return parse_operation(stream, depth=depth + 1)
+            try:
+                return parse_operation(stream, depth=depth + 1)
+            finally:
+                stream.expect("cparent")
         case Token("number"):
             return AstComputeNumber.from_value(token.value, depth=depth)
         case Token("quotes"):
@@ -540,6 +544,8 @@ def operation_parser(stream: TokenStream):
                 argument_node = delegate("block_pos")(stream)
             case _:
                 raise InvalidSyntax(f"{bolt_type} is not implemented")
+    with stream.syntax(operation_type = r'float|integer'):
+        operation_type = stream.expect("operation_type").value
     with stream.syntax(
         oparent=r"\(",
         cparent=r"\)",
@@ -560,7 +566,7 @@ def operation_parser(stream: TokenStream):
     ):
         with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "call", "target"]}):
             operation = parse_operation(stream, depth=0)
-    return AstBoltComputeRoot(bolt_type=bolt_type, argument_node=argument_node, children=operation)
+    return AstBoltComputeRoot(bolt_type=bolt_type, argument_node=argument_node, operation_type=operation_type, children=operation)
 
 
 @rule(AstComputeOperation)
@@ -599,6 +605,8 @@ def serialize_operation(node: AstComputeOperation, result: list[str]):
 @rule(AstBoltComputeRoot)
 def serialize_root(node: AstBoltComputeRoot, result: list[str]):
     result.append(node.bolt_type)
+    result.append(" ")
+    result.append(node.operation_type)
     result.append(" ")
     if node.argument_node:
         yield node.argument_node
@@ -731,7 +739,7 @@ def serialize_compute_score(node: AstComputeScore, result: list[str]):
 
 def beet_default(ctx: Context):
     mc = ctx.inject(Mecha)
-    mc.spec.parsers["command:argument:minecraft:number_provider"] = MultilineParser(
+    mc.spec.parsers["command:argument:minecraft:context_float_provider"] = MultilineParser(
         delegate("resource_location_or_nbt")
     )
     rules = [
