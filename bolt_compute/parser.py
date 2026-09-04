@@ -4,10 +4,10 @@ from mecha import (
     AstNode,
     delegate,
 )
-from tokenstream import InvalidSyntax, TokenStream
+from tokenstream import InvalidSyntax, Token, TokenStream, set_location
 
-from bolt_compute.float import AstBaseFloat, AstFloatAdd, AstFloatConditional, AstFloatDiv, AstFloatMod, AstFloatMul, AstFloatPow
-from bolt_compute.integer import AstBaseInteger, AstIntegerAdd, AstIntegerConditional, AstIntegerDiv, AstIntegerMod, AstIntegerMul, AstIntegerPow
+from bolt_compute.float import AstBaseFloat, AstFloatAdd, AstFloatConditional, AstFloatConstant, AstFloatDiv, AstFloatMod, AstFloatMul, AstFloatPow
+from bolt_compute.integer import AstBaseInteger, AstIntegerAdd, AstIntegerConditional, AstIntegerConstant, AstIntegerDiv, AstIntegerMod, AstIntegerMul, AstIntegerPow
 from bolt_compute.node import AstBaseNode, AstComputeRoot, MutableDepth
 from bolt_compute.types import AdditiveOperation, BoltType, MultiplicativeOperation, Operation, OperationType
 from contextlib import contextmanager
@@ -184,7 +184,14 @@ def parse_literal(stream: TokenStream, operation_type: Literal["float"], depth: 
 @overload
 def parse_literal(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstBaseInteger: ...
 def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int) -> AstBaseNode: 
-    raise NotImplementedError()
+    token = stream.expect_any("number", "quotes", "storage", "score")
+    match token:
+        case Token("number"):
+            if operation_type == "float":
+                return AstFloatConstant(value=float(token.value), depth=MutableDepth(depth))
+            elif operation_type == "integer":
+                return AstIntegerConstant(value=int(token.value), depth=MutableDepth(depth))
+    raise NotImplementedError(token.value)
 
 def operation_parser_float(
     stream: TokenStream, bolt_type: BoltType, argument_node: AstNode | None = None
@@ -195,10 +202,13 @@ def operation_parser_float(
 
 def operation_parser_integer(
     stream: TokenStream, bolt_type: BoltType, argument_node: AstNode | None = None
-) -> AstComputeRoot: # type: ignore
+) -> AstComputeRoot:
+    first_token = stream.current
     with integer_syntax(stream):
         node= parse_expression(stream, "integer", 0)
-    return AstComputeRoot(children=node, argument_node=argument_node, bolt_type=bolt_type, operation_type="integer")
+    res = AstComputeRoot(children=node, argument_node=argument_node, bolt_type=bolt_type, operation_type="integer")
+    set_location(res, first_token, stream.current)
+    return res
 
 
 def operation_parser(stream: TokenStream) -> AstComputeRoot:

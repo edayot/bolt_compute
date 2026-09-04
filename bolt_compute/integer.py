@@ -79,13 +79,18 @@ class AstIntegerPow(AstBaseIntegerBinaryOp):
 
 
 @dataclass(frozen=True, slots=True)
-class AstBaseIntegerConstant(AstBaseInteger):
+class AstIntegerConstant(AstBaseInteger):
+    type = "constant"
     value: int = required_field()
 
-
-@dataclass(frozen=True, slots=True)
-class AstIntegerConstant(AstBaseIntegerConstant):
-    type = "constant"
+    def serialize(self, result):
+        print(self)
+        if self.depth.value == 0:
+            result.append('{type:"minecraft:constant",value:')
+            result.append(str(self.value))
+            result.append('}')
+        else:
+            result.append(str(self.value))
 
 
 @dataclass(frozen=True, slots=True)
