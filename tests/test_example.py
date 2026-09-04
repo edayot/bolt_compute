@@ -1,9 +1,11 @@
 import os
+
 import pytest
-from pytest_insta import SnapshotFixture
 from beet import (
     run_beet,
 )
+from pytest_insta import SnapshotFixture
+
 EXAMPLES = [f for f in os.listdir("examples") if not f.startswith("nosnap_")]
 
 
