@@ -7,11 +7,12 @@ from bolt import AstFormatString, AstIdentifier
 from mecha import AstChildren, AstNode
 
 from bolt_compute.node import AstBaseInteger, AstBaseFloat
+from tokenstream import InvalidSyntax, set_location
 
 
 @dataclass(frozen=True, slots=True)
 class AstFloatReference(AstBaseFloat):
-    type = "reference"
+    type = "bolt_compute_reference"
     reference: str = required_field()
 
     def serialize(self, result):
@@ -21,7 +22,7 @@ class AstFloatReference(AstBaseFloat):
 
 @dataclass(frozen=True, slots=True)
 class AstFloatBoltVariable(AstBaseFloat):
-    type = "bolt_variable"
+    type = "bolt_compute_variable"
     value: AstIdentifier | AstFormatString = required_field()
 
     def serialize(self, result):
@@ -30,7 +31,9 @@ class AstFloatBoltVariable(AstBaseFloat):
         elif isinstance(self.value, str):
             yield AstFloatReference(reference=self.value, depth=self.depth)
         else:
-            raise BaseException(self.__class__.__name__, self.value, type(self.value))
+            exc = InvalidSyntax(self.__class__.__name__, self.value, type(self.value))
+            set_location(exc, self)
+            raise exc
     
 @dataclass(frozen=True, slots=True)
 class AstBaseFloatInput(AstBaseFloat):

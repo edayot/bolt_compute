@@ -41,8 +41,8 @@ for z in range(15):
     data modify storage example:main result_bolt set compute bolt float (f"minecraft:{z}")
 
 
-data modify storage example:main result_bolt set compute bolt float (maximum([1]))
-data modify storage example:main result_bolt set compute bolt float (maximum([1,2,3,4,5,6]))
+data modify storage example:main result_bolt set compute bolt float (max([1]))
+data modify storage example:main result_bolt set compute bolt float (max([1,2,3,4,5,6]))
 
 # data modify storage example:main result_bolt set compute bolt float (sum([1]))
 # data modify storage example:main result_bolt set compute bolt float (sum([1,2,3,4,5,6]))
