@@ -41,22 +41,28 @@ for z in range(15):
     data modify storage example:main result_bolt set compute bolt float (f"minecraft:{z}")
 
 
-data modify storage example:main result_bolt set compute bolt float (max([1]))
+data modify storage example:main result_bolt set compute bolt float -(21*78)
+
+
+data modify storage example:main result_bolt set compute bolt float (sin(input=1))
+data modify storage example:main result_bolt set compute bolt float (sin(1))
+data modify storage example:main result_bolt set compute bolt float (max(inputs=[1,2,3,4,5,6]))
 data modify storage example:main result_bolt set compute bolt float (max([1,2,3,4,5,6]))
+data modify storage example:main result_bolt set compute bolt float (max(1,2,3,4,5,6))
 
-# data modify storage example:main result_bolt set compute bolt float (sum([1]))
-# data modify storage example:main result_bolt set compute bolt float (sum([1,2,3,4,5,6]))
+data modify storage example:main result_bolt set compute bolt float (add([1]))
+data modify storage example:main result_bolt set compute bolt float (add([1,2,3,4,5,6]))
 
-# data modify storage example:main result_bolt set compute bolt float (sum(["1"]))
-# data modify storage example:main result_bolt set compute bolt float (sum(["1","2","3","4","5","6"]))
-
-
-# data modify storage example:main result_bolt set compute bolt float (average(["1"]))
-# data modify storage example:main result_bolt set compute bolt float (average(["1","2","3","4","5","6"]))
+data modify storage example:main result_bolt set compute bolt float (add(["1"]))
+data modify storage example:main result_bolt set compute bolt float (add(["1","2","3","4","5","6"]))
 
 
-# data modify storage example:main result_bolt set compute bolt float (binomial(5, 2,))
-# data modify storage example:main result_bolt set compute bolt float (uniform(5, 2,))
+data modify storage example:main result_bolt set compute bolt float (avg(["1"]))
+data modify storage example:main result_bolt set compute bolt float (avg(["1","2","3","4","5","6"]))
+
+
+data modify storage example:main result_bolt set compute bolt integer (binomial(n=5, p=2,))
+data modify storage example:main result_bolt set compute bolt integer (uniform(5, 2,))
 
 # data modify storage example:main result_bolt set compute bolt float ("aaa:bbb")
 # data modify storage example:main result_bolt set compute bolt float ("aaa:bbb" + "ccc:ddd")

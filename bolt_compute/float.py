@@ -11,6 +11,15 @@ from tokenstream import InvalidSyntax, set_location
 
 
 @dataclass(frozen=True, slots=True)
+class AstFloatNOP(AstBaseFloat):
+    type = "bolt_compute_nop"
+    children: AstBaseInteger = required_field()
+
+    def serialize(self, result):
+        yield self.children
+
+
+@dataclass(frozen=True, slots=True)
 class AstFloatReference(AstBaseFloat):
     type = "bolt_compute_reference"
     reference: str = required_field()
@@ -38,6 +47,13 @@ class AstFloatBoltVariable(AstBaseFloat):
 @dataclass(frozen=True, slots=True)
 class AstBaseFloatInput(AstBaseFloat):
     input: AstBaseFloat = required_field()
+
+    def serialize(self, result):
+        result.append('{type:"minecraft:')
+        result.append(self.type)
+        result.append('",input:')
+        yield self.input
+        result.append('}')
 
 
 @dataclass(frozen=True, slots=True)

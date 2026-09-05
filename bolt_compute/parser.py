@@ -1,4 +1,4 @@
-from typing import Literal, assert_never, cast, overload, reveal_type
+from typing import Any, Literal, Type, TypeIs, assert_never, cast, overload, reveal_type
 
 from bolt import AstCall, AstFormatString, AstIdentifier, AstValue
 from mecha import (
@@ -8,9 +8,9 @@ from mecha import (
 )
 from tokenstream import InvalidSyntax, Token, TokenStream, set_location
 
+from bolt_compute.node import AstBaseNode, AstComputeRoot, MutableDepth, FLOAT_NODES, INTEGER_NODES
 from bolt_compute.float import *
 from bolt_compute.integer import *
-from bolt_compute.node import AstBaseNode, AstComputeRoot, MutableDepth
 from bolt_compute.types import AdditiveOperation, BoltType, MultiplicativeOperation, Operation, OperationType
 from contextlib import contextmanager
 
@@ -35,10 +35,6 @@ def integer_syntax(stream: TokenStream):
     with stream.syntax(
         oparent=r"\(",
         cparent=r"\)",
-        obracket=r"\[",
-        cbracket=r"\]",
-        comma=r",",
-        dot=r"\.",
         conditional=r"if|else",
         additive=r"\+|\-",
         multiplicative=r'\*\*' r'|\*' r'|\/\/' r'|\%',
@@ -47,6 +43,7 @@ def integer_syntax(stream: TokenStream):
         score=r"score",
         quotes=r'"|\'',
         target="|".join(SCORE_TARGETS),
+        call='|'.join(INTEGER_NODES.keys())
     ):
         with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "target"]}):
             yield
@@ -56,10 +53,6 @@ def float_syntax(stream: TokenStream):
     with stream.syntax(
         oparent=r"\(",
         cparent=r"\)",
-        obracket=r"\[",
-        cbracket=r"\]",
-        comma=r",",
-        dot=r"\.",
         conditional=r"if|else",
         additive=r"\+|\-",
         multiplicative=r'\*\*' r'|\*' r'|\/' r'|\%',
@@ -68,6 +61,7 @@ def float_syntax(stream: TokenStream):
         score=r"score",
         quotes=r'"|\'',
         target="|".join(SCORE_TARGETS),
+        call='|'.join(FLOAT_NODES.keys())
     ):
         with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "target"]}):
             yield
@@ -274,7 +268,7 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
 
     stream.crop()
 
-    token = stream.expect_any("number", "quotes", "storage", "score")
+    token = stream.expect_any("number", "quotes", "storage", "score", "additive", "call")
     match token:
         case Token("number"):
             if operation_type == "float":
@@ -285,9 +279,166 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                 node = AstIntegerConstant(value=int(token.value), depth=MutableDepth(depth))
                 set_location(node, token)
                 return node
+        case Token("additive"):
+            if token.value == "+":
+                if operation_type == "integer":
+                    t = AstIntegerNOP
+                else: 
+                    t = AstFloatNOP
+                node = t(children=parse_primary(stream, operation_type, depth+1))
+            else:
+                if operation_type == "integer":
+                    t = AstIntegerNegate
+                else:
+                    t = AstFloatNegate
+                node = t(input=parse_primary(stream, operation_type, depth+1), depth=MutableDepth(depth))
+            set_location(node, token)
+            return node
+        case Token("call"):
+            if operation_type == "float":
+                cls = FLOAT_NODES[token.value]
+                input_cls = AstBaseFloatInput
+                inputs_cls = AstBaseFloatInputs
+            elif operation_type == "integer":
+                cls = INTEGER_NODES[token.value]
+                input_cls = AstBaseFloatInput
+                inputs_cls = AstBaseFloatInputs
+            else:
+                assert_never(operation_type)
+            stream.expect("oparent")
+            with stream.syntax(
+                argument=r'[a-z]+',
+                equal=r'=',
+                comma=r','
+            ):
+                # they are 2 option, named args and unamed args
+                if issubclass(cls, input_cls):
+                    with stream.checkpoint() as commit:
+                        stream.expect(("argument", "input"))
+                        stream.expect("equal")
+                        node = cls(input=parse_expression(stream, operation_type, depth+1), depth=MutableDepth(depth))
+                        stream.expect("cparent")
+                        set_location(node, token)
+                        commit()
+                        return node
+                    node = cls(input=parse_expression(stream, operation_type, depth+1), depth=MutableDepth(depth))
+                    stream.expect("cparent")
+                    set_location(node, token)
+                    return node
+                elif issubclass(cls, inputs_cls):
+                    with stream.checkpoint() as commit:
+                        stream.expect(("argument", "inputs"))
+                        stream.expect("equal")
+                        node = cls(inputs=parse_list(stream, operation_type, depth+1), depth=MutableDepth(depth))
+                        stream.expect("cparent")
+                        set_location(node, token)
+                        commit()
+                        return node
+                    with stream.checkpoint() as commit:
+                        node = cls(inputs=parse_list(stream, operation_type, depth+1), depth=MutableDepth(depth))
+                        stream.expect("cparent")
+                        set_location(node, token)
+                        commit()
+                        return node
+                    node = cls(inputs=parse_star_arguments(stream, operation_type, depth+1), depth=MutableDepth(depth))
+                    set_location(node, token)
+                    commit()
+                    return node
+                else:
+                    args = inspect.get_annotations(cls.__init__)
+                    args.pop("location")
+                    args.pop("end_location")
+                    args.pop("depth")
+                    args.pop("return")
+                    assert validate_ast_dict(args)
+                    with stream.checkpoint() as commit:
+                        parsed_arguments: dict[str, AstBaseNode] = {}
+                        arg = stream.expect("argument")
+                        if not arg.value in args:
+                            commit.rollback = False
+                            exc = InvalidSyntax(f"Unexpected {arg.value} argument of function {token.value}")
+                            set_location(exc, arg)
+                            raise exc
+                        stream.expect("equal")
+                        if issubclass(args[arg.value], AstBaseInteger):
+                            with integer_syntax(stream):
+                                node = parse_expression(stream, "integer", 0)
+                        elif issubclass(args[arg.value], AstBaseFloat):
+                            with float_syntax(stream):
+                                node = parse_expression(stream, "float", 0)
+                        else:
+                            raise NotImplementedError(args[arg.value])
+                        
+                        base_class = args.pop
+                    
+                    raise NotImplementedError(args)
+                    
+                raise NotImplementedError(cls.__name__, cls.type)
+
+            raise NotImplementedError()
         case _:
-            raise NotImplementedError(token.value)
-    raise NotImplementedError(token.value)
+            raise NotImplementedError(token.type)
+    raise NotImplementedError(token.type)
+
+
+
+
+def validate_ast_dict(args: dict[str, Any]) -> TypeIs[dict[str, type[AstBaseNode]]]:
+    for key, value in args.items():
+        if not issubclass(value, AstBaseNode): return False
+    return True
+
+
+
+
+@overload
+def parse_list(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstChildren[AstBaseFloat]: ...
+@overload
+def parse_list(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstChildren[AstBaseInteger]: ...
+def parse_list(stream: TokenStream, operation_type: OperationType, depth: int) -> AstChildren[AstNode]:
+    """Parse a comma-separated list of expressions inside brackets."""
+    with stream.syntax(
+        obracket=r'\[',
+        cbracket=r'\]',
+    ):
+        stream.expect("obracket")
+        values: list[AstNode] = []
+        while True:
+            with stream.checkpoint() as commit:
+                stream.expect("cbracket")
+                commit()
+                break
+            values.append(parse_expression(stream, operation_type, depth=depth + 1))
+            follow = stream.expect_any("comma", "cbracket")
+            match follow:
+                case Token("cbracket"):
+                    break
+                case Token("comma"):
+                    ...
+    return AstChildren(values)
+
+
+@overload
+def parse_star_arguments(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstChildren[AstBaseFloat]: ...
+@overload
+def parse_star_arguments(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstChildren[AstBaseInteger]: ...
+def parse_star_arguments(stream: TokenStream, operation_type: OperationType, depth: int) -> AstChildren[AstNode]:
+    """Parse a comma-separated list of expressions until cparent."""
+    values: list[AstNode] = []
+    while True:
+        with stream.checkpoint() as commit:
+            stream.expect("cparent")
+            commit()
+            break
+        values.append(parse_expression(stream, operation_type, depth=depth + 1))
+        follow = stream.expect_any("comma", "cparent")
+        match follow:
+            case Token("cparent"):
+                break
+            case Token("comma"):
+                ...
+    return AstChildren(values)
+
 
 def operation_parser_float(
     stream: TokenStream, bolt_type: BoltType, argument_node: AstNode | None = None

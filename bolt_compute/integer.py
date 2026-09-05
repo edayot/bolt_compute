@@ -9,10 +9,18 @@ from bolt_compute.node import AstBaseInteger, AstBaseFloat
 
 
 @dataclass(frozen=True, slots=True)
+class AstIntegerNOP(AstBaseInteger):
+    type = "bolt_compute_nop"
+    children: AstBaseInteger = required_field()
+
+    def serialize(self, result):
+        yield self.children
+
+@dataclass(frozen=True, slots=True)
 class AstIntegerReference(AstBaseInteger):
     type = "reference"
     reference: str = required_field()
-    
+
     def serialize(self, result):
         if self.depth.value != 0: result.append('"')
         result.append(self.reference)
@@ -149,8 +157,9 @@ class AstIntegerNegate(AstBaseIntegerInput):
 
 
 @dataclass(frozen=True, slots=True)
-class AstIntegerFromFloat(AstBaseIntegerInput):
+class AstIntegerFromFloat(AstBaseInteger):
     type = "from_float"
+    input: AstBaseFloat = required_field()
 
 
 @dataclass(frozen=True, slots=True)

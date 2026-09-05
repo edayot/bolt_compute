@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import ClassVar, Generator, Iterable, Literal, Optional, Self, TypeIs, overload
+from typing import Any, ClassVar, Generator, Iterable, Literal, Optional, Self, Type, TypeIs, overload
 
 from beet.core.utils import required_field
 from mecha import AstNode, rule
@@ -26,7 +26,11 @@ class AstComputeRoot(AstNode):
             result.append(" ")
         result.append(self.operation_type)
         result.append(" ")
+        children_start_index = len(result)
         yield self.children
+        children_last_index = len(result)
+        children_computed = "".join(result[children_start_index:children_last_index])
+        # children_computed coud be used in the future for data validation
 
 @dataclass(frozen=True, slots=True)
 class AstBaseNode(AstNode):
@@ -53,15 +57,30 @@ class AstBaseNode(AstNode):
         return self # pyright: ignore[reportReturnType]
     
 
+INTEGER_NODES: dict[str, Type[AstBaseInteger]] = {}
+FLOAT_NODES:   dict[str, Type[AstBaseFloat]] = {}
+
 
 @dataclass(frozen=True, slots=True)
 class AstBaseInteger(AstBaseNode):
     value_type = "integer"
 
+    def __init_subclass__(cls) -> None:
+        type = getattr(cls, "type", None)
+        if type is not None and isinstance(type, str) and not type.startswith("bolt_compute_"):
+            INTEGER_NODES[type] = cls
+        return super().__init_subclass__()
+
 
 @dataclass(frozen=True, slots=True)
 class AstBaseFloat(AstBaseNode):
     value_type = "float"
+
+    def __init_subclass__(cls) -> None:
+        type = getattr(cls, "type", None)
+        if type is not None and isinstance(type, str) and not type.startswith("bolt_compute_"):
+            FLOAT_NODES[type] = cls
+        return super().__init_subclass__()
 
 
 
