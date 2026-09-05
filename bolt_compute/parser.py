@@ -1,13 +1,14 @@
 from typing import Literal, assert_never, cast, overload, reveal_type
 
+from bolt import AstFormatString, AstIdentifier, AstValue
 from mecha import (
     AstNode,
     delegate,
 )
 from tokenstream import InvalidSyntax, Token, TokenStream, set_location
 
-from bolt_compute.float import AstBaseFloat, AstFloatAdd, AstFloatConditional, AstFloatConstant, AstFloatDiv, AstFloatMod, AstFloatMul, AstFloatPow
-from bolt_compute.integer import AstBaseInteger, AstIntegerAdd, AstIntegerConditional, AstIntegerConstant, AstIntegerDiv, AstIntegerMod, AstIntegerMul, AstIntegerPow
+from bolt_compute.float import *
+from bolt_compute.integer import *
 from bolt_compute.node import AstBaseNode, AstComputeRoot, MutableDepth
 from bolt_compute.types import AdditiveOperation, BoltType, MultiplicativeOperation, Operation, OperationType
 from contextlib import contextmanager
@@ -46,11 +47,23 @@ def integer_syntax(stream: TokenStream):
 
 @contextmanager
 def float_syntax(stream: TokenStream):
-    with integer_syntax(stream):
-        with stream.syntax(
-            number=r"[+-]?([0-9]*[.])?[0-9]+",
-            multiplicative=r'\*\*' r'|\*' r'|\/' r'|\%',
-        ):
+    with stream.syntax(
+        oparent=r"\(",
+        cparent=r"\)",
+        obracket=r"\[",
+        cbracket=r"\]",
+        comma=r",",
+        dot=r"\.",
+        conditional=r"if|else",
+        additive=r"\+|\-",
+        multiplicative=r'\*\*' r'|\*' r'|\/' r'|\%',
+        number=r"[+-]?([0-9]*[.])?[0-9]+",
+        storage=r"storage",
+        score=r"score",
+        quotes=r'"|\'',
+        target="|".join(SCORE_TARGETS),
+    ):
+        with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "target"]}):
             yield
 
 @overload
@@ -82,7 +95,7 @@ def parse_conditional(stream: TokenStream, operation_type: OperationType, depth:
             if token.value == "if": raise InvalidSyntax("Cannot have an `if` statement without a preceding `else` statement")
             
             # Recursively parse the else clause (which could be another conditional)
-            on_false = parse_conditional(stream, operation_type, depth+1)
+            on_false = parse_additive(stream, operation_type, depth+1)
             if operation_type == "integer":
                 on_true = AstIntegerConditional(condition=condition, on_true=on_true.cast_int(), on_false=on_false.cast_int(), depth=MutableDepth(depth))
             elif operation_type == "float":
@@ -114,7 +127,16 @@ def parse_additive(stream: TokenStream, operation_type: OperationType, depth: in
                     if operation_type == "integer":
                         lvalue = AstIntegerAdd(inputs=[lvalue.cast_int(), rvalue.cast_int()], depth=MutableDepth(depth))
                     elif operation_type == "float":
-                        lvalue = AstFloatAdd(inputs=[lvalue.cast_float(), rvalue.cast_float()], depth=MutableDepth(depth))
+                        lvalue = AstFloatAdd(inputs=AstChildren([lvalue.cast_float(), rvalue.cast_float()]), depth=MutableDepth(depth))
+                case "-":
+                    if operation_type == "integer":
+                        lvalue = AstIntegerSub(left=lvalue.cast_int(), right=rvalue.cast_int(), depth=MutableDepth(depth))
+                    elif operation_type == "float":
+                        lvalue = AstFloatSub(left=lvalue.cast_float(), right=rvalue.cast_float(), depth=MutableDepth(depth))
+                case _:
+                    assert_never("AdditiveOperation", op)
+
+            continue
         break
 
     return lvalue
@@ -141,7 +163,7 @@ def parse_multiplicative(stream: TokenStream, operation_type: OperationType, dep
                     if operation_type == "integer":
                         lvalue = AstIntegerMul(inputs=[lvalue.cast_int(), rvalue.cast_int()], depth=MutableDepth(depth))
                     elif operation_type == "float":
-                        lvalue = AstFloatMul(inputs=[lvalue.cast_float(), rvalue.cast_float()], depth=MutableDepth(depth))
+                        lvalue = AstFloatMul(inputs=AstChildren([lvalue.cast_float(), rvalue.cast_float()]), depth=MutableDepth(depth))
                 case "**":
                     if operation_type == "integer":
                         lvalue = AstIntegerPow(left=lvalue.cast_int(), right=rvalue.cast_int(), depth=MutableDepth(depth))
@@ -158,6 +180,8 @@ def parse_multiplicative(stream: TokenStream, operation_type: OperationType, dep
                         lvalue = AstIntegerMod(left=lvalue.cast_int(), right=rvalue.cast_int(), depth=MutableDepth(depth))
                     elif operation_type == "float":
                         lvalue = AstFloatMod(left=lvalue.cast_float(), right=rvalue.cast_float(), depth=MutableDepth(depth))
+                case _:
+                    assert_never("MultiplicativeOperation", op)
             continue
         break
 
@@ -172,7 +196,9 @@ def parse_primary(stream: TokenStream, operation_type: OperationType, depth: int
     """Parse primary expressions (literals, parenthesized expressions, function calls)."""
     with stream.checkpoint() as commit:
         stream.expect("oparent")
+        commit()
         result = parse_expression(stream, operation_type, depth=depth)
+        commit()
         stream.expect("cparent")
         commit()
         return result
@@ -184,6 +210,32 @@ def parse_literal(stream: TokenStream, operation_type: Literal["float"], depth: 
 @overload
 def parse_literal(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstBaseInteger: ...
 def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int) -> AstBaseNode: 
+    bolt_expression_parser = delegate("bolt:primary")
+    with stream.checkpoint() as commit:
+        bolt_node: AstNode = bolt_expression_parser(stream)
+        if isinstance(bolt_node, AstValue):
+            if isinstance(bolt_node.value, (float, int)) and operation_type == "float":
+                commit()
+                return AstFloatConstant(value=float(bolt_node.value), depth=MutableDepth(depth))
+            elif isinstance(bolt_node.value, int) and operation_type == "integer":
+                commit()
+                return AstIntegerConstant(value=int(bolt_node.value), depth=MutableDepth(depth))
+            elif isinstance(bolt_node.value, str):
+                if operation_type == "float":
+                    commit()
+                    return AstFloatReference(reference=bolt_node.value, depth=MutableDepth(depth))
+                elif operation_type == "integer":
+                    commit()
+                    return AstIntegerReference(reference=bolt_node.value, depth=MutableDepth(depth))
+        elif isinstance(bolt_node, (AstIdentifier, AstFormatString)):
+            if operation_type == "integer":
+                commit()
+                return AstIntegerBoltVariable(value=bolt_node, depth=MutableDepth(depth))
+            elif operation_type == "float":
+                commit()
+                return AstFloatBoltVariable(value=bolt_node, depth=MutableDepth(depth))
+        raise NotImplementedError(bolt_node)
+
     token = stream.expect_any("number", "quotes", "storage", "score")
     match token:
         case Token("number"):
@@ -191,6 +243,8 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                 return AstFloatConstant(value=float(token.value), depth=MutableDepth(depth))
             elif operation_type == "integer":
                 return AstIntegerConstant(value=int(token.value), depth=MutableDepth(depth))
+        case _:
+            raise NotImplementedError(token.value)
     raise NotImplementedError(token.value)
 
 def operation_parser_float(

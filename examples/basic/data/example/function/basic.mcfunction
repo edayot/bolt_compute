@@ -24,25 +24,25 @@ data modify storage example:main result set compute default float {
 # dataa = "coucoi"
 
 data modify storage example:main result_bolt set compute bolt integer (1)
-# data modify storage example:main result_bolt set compute bolt float (4+7*2+8)
-# data modify storage example:main result_bolt set compute bolt float (1+1+1)
-# data modify storage example:main result_bolt set compute bolt float (21-78)
-# data modify storage example:main result_bolt set compute bolt float (21*78)
+data modify storage example:main result_bolt set compute bolt float (4+7*2+2)
+data modify storage example:main result_bolt set compute bolt float (1+1+1)
+data modify storage example:main result_bolt set compute bolt float (21-78)
+data modify storage example:main result_bolt set compute bolt float (21*78)
 
-# x = 1.25
+x = 1.25
 
-# data modify storage example:main result_bolt set compute bolt float (x)
-# data modify storage example:main result_bolt set compute bolt float (x*x)
+data modify storage example:main result_bolt set compute bolt float x
+data modify storage example:main result_bolt set compute bolt float x*x
 
-# y = "eee:aaaaaa"
-# data modify storage example:main result_bolt set compute bolt float (y)
+y = "eee:aaaaaa"
+data modify storage example:main result_bolt set compute bolt float (y)
 
-# for z in range(15):
-#     data modify storage example:main result_bolt set compute bolt float (f"minecraft:{z}")
+for z in range(15):
+    data modify storage example:main result_bolt set compute bolt float (f"minecraft:{z}")
 
 
-# data modify storage example:main result_bolt set compute bolt float (maximum([1]))
-# data modify storage example:main result_bolt set compute bolt float (maximum([1,2,3,4,5,6]))
+data modify storage example:main result_bolt set compute bolt float (maximum([1]))
+data modify storage example:main result_bolt set compute bolt float (maximum([1,2,3,4,5,6]))
 
 # data modify storage example:main result_bolt set compute bolt float (sum([1]))
 # data modify storage example:main result_bolt set compute bolt float (sum([1,2,3,4,5,6]))

@@ -11,6 +11,7 @@
             "request": "launch",
             "module": "beet",
             "cwd": "${workspaceFolder}/examples/basic",
+            "preLaunchTask": "clear-beet-cache"
         }
     ]
 }

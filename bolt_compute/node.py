@@ -35,7 +35,14 @@ class AstBaseNode(AstNode):
     depth: MutableDepth = required_field()
 
     def serialize(self: Self, result: list[str]) -> Iterable[AstNode] | None:
-        raise NotImplementedError(self.__class__.__name__)
+        source_file = inspect.getsourcefile(self.__class__)
+        source_lines = inspect.getsourcelines(self.__class__)
+        line_number = source_lines[1]
+        
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.serialize() - "
+            f"Implement in {source_file}:{line_number}"
+        )
 
     def cast_float(self) -> AstBaseFloat:
         assert self.value_type == "float"

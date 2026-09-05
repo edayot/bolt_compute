@@ -2,9 +2,34 @@ import typing
 from dataclasses import dataclass
 
 from beet.core.utils import required_field
-from mecha import AstNode
+from bolt import AstFormatString, AstIdentifier
+from mecha import AstChildren, AstNode
 
 from bolt_compute.node import AstBaseInteger, AstBaseFloat
+
+
+@dataclass(frozen=True, slots=True)
+class AstIntegerReference(AstBaseInteger):
+    type = "reference"
+    reference: str = required_field()
+    
+    def serialize(self, result):
+        if self.depth.value != 0: result.append('"')
+        result.append(self.reference)
+        if self.depth.value != 0: result.append('"')
+
+@dataclass(frozen=True, slots=True)
+class AstIntegerBoltVariable(AstBaseFloat):
+    type = "bolt_variable"
+    value: AstIdentifier | AstFormatString = required_field()
+
+    def serialize(self, result):
+        if isinstance(self.value, (int)):
+            yield AstIntegerConstant(value=self.value, depth=self.depth)
+        elif isinstance(self.value, str):
+            yield AstIntegerReference(reference=self.value, depth=self.depth)
+        else:
+            raise BaseException(self.__class__.__name__, self.value, type(self.value))
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +72,12 @@ class AstBaseIntegerBinaryOp(AstBaseInteger):
     left: AstBaseInteger = required_field()
     right: AstBaseInteger = required_field()
 
+    def serialize(self, result):
+        result.append('{type:"minecraft:'+self.type+'",left:')
+        yield self.left
+        result.append(',right:')
+        yield self.left
+        result.append('}')
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerSub(AstBaseIntegerBinaryOp):
@@ -84,7 +115,6 @@ class AstIntegerConstant(AstBaseInteger):
     value: int = required_field()
 
     def serialize(self, result):
-        print(self)
         if self.depth.value == 0:
             result.append('{type:"minecraft:constant",value:')
             result.append(str(self.value))
@@ -135,7 +165,7 @@ class AstIntegerUniform(AstBaseIntegerRange):
 
 
 @dataclass(frozen=True, slots=True)
-class AstIntegerWeightedListEntry:
+class AstIntegerWeightedListEntry(AstNode):
     data: AstBaseInteger = required_field()
     weight: int = required_field()
 
@@ -143,7 +173,7 @@ class AstIntegerWeightedListEntry:
 @dataclass(frozen=True, slots=True)
 class AstIntegerWeightedList(AstBaseInteger):
     type = "weighted_list"
-    distribution: list[AstIntegerWeightedListEntry] = required_field()
+    distribution: AstChildren[AstIntegerWeightedListEntry] = required_field()
 
 
 @dataclass(frozen=True, slots=True)

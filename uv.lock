@@ -81,8 +81,8 @@ wheels = [
 
 [[package]]
 name = "beet"
-version = "0.116.0"
-source = { git = "https://github.com/edayot/beet/?branch=runtime_minecraft_version#83fa6ebe6a1014d6038b007b5e32ff324161c379" }
+version = "0.117.0"
+source = { editable = "../beet" }
 dependencies = [
     { name = "click" },
     { name = "click-help-colors" },
@@ -93,6 +93,30 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "toml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = ">=8.3.1" },
+    { name = "click-help-colors", specifier = ">=0.9.4" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "nbtlib", specifier = "==1.12.1" },
+    { name = "pathspec", specifier = ">=0.12.1" },
+    { name = "pillow", specifier = ">=12.0.0" },
+    { name = "pydantic", specifier = ">=2.12.4" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "toml", specifier = ">=0.10.2" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "basedpyright", specifier = ">=1.33.0" },
+    { name = "pytest", specifier = ">=9.0.0" },
+    { name = "pytest-insta", specifier = ">=0.4.0" },
+    { name = "pytest-minecraft", specifier = ">=0.2.0" },
+    { name = "python-semantic-release", specifier = ">=10.5.2" },
+    { name = "ruff", specifier = ">=0.14.4" },
+    { name = "zensical", specifier = ">=0.0.20" },
 ]
 
 [[package]]
@@ -120,10 +144,16 @@ wheels = [
 [[package]]
 name = "bolt"
 version = "0.50.1"
-source = { git = "https://github.com/edayot/beet/?subdirectory=packages%2Fbolt&branch=runtime_minecraft_version#83fa6ebe6a1014d6038b007b5e32ff324161c379" }
+source = { editable = "../beet/packages/bolt" }
 dependencies = [
     { name = "beet" },
     { name = "mecha" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "beet", editable = "../beet" },
+    { name = "mecha", editable = "../beet/packages/mecha" },
 ]
 
 [[package]]
@@ -145,8 +175,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "beet", git = "https://github.com/edayot/beet?branch=runtime_minecraft_version" },
-    { name = "bolt", git = "https://github.com/edayot/beet/?subdirectory=packages%2Fbolt&branch=runtime_minecraft_version" },
+    { name = "beet", editable = "../beet" },
+    { name = "bolt", editable = "../beet/packages/bolt" },
 ]
 
 [package.metadata.requires-dev]
@@ -383,10 +413,16 @@ wheels = [
 [[package]]
 name = "mecha"
 version = "0.104.1"
-source = { git = "https://github.com/edayot/beet/?subdirectory=packages%2Fmecha&branch=runtime_minecraft_version#83fa6ebe6a1014d6038b007b5e32ff324161c379" }
+source = { editable = "../beet/packages/mecha" }
 dependencies = [
     { name = "beet" },
     { name = "tokenstream" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "beet", editable = "../beet" },
+    { name = "tokenstream", specifier = ">=1.7.0" },
 ]
 
 [[package]]

@@ -1,12 +1,37 @@
+import inspect
 import typing
 from dataclasses import dataclass
 
 from beet.core.utils import required_field
-from mecha import AstNode
+from bolt import AstFormatString, AstIdentifier
+from mecha import AstChildren, AstNode
 
 from bolt_compute.node import AstBaseInteger, AstBaseFloat
 
 
+@dataclass(frozen=True, slots=True)
+class AstFloatReference(AstBaseFloat):
+    type = "reference"
+    reference: str = required_field()
+
+    def serialize(self, result):
+        if self.depth.value != 0: result.append('"')
+        result.append(self.reference)
+        if self.depth.value != 0: result.append('"')
+
+@dataclass(frozen=True, slots=True)
+class AstFloatBoltVariable(AstBaseFloat):
+    type = "bolt_variable"
+    value: AstIdentifier | AstFormatString = required_field()
+
+    def serialize(self, result):
+        if isinstance(self.value, (int, float)):
+            yield AstFloatConstant(value=self.value, depth=self.depth)
+        elif isinstance(self.value, str):
+            yield AstFloatReference(reference=self.value, depth=self.depth)
+        else:
+            raise BaseException(self.__class__.__name__, self.value, type(self.value))
+    
 @dataclass(frozen=True, slots=True)
 class AstBaseFloatInput(AstBaseFloat):
     input: AstBaseFloat = required_field()
@@ -65,7 +90,15 @@ class AstFloatFromInt(AstBaseFloat):
 
 @dataclass(frozen=True, slots=True)
 class AstBaseFloatInputs(AstBaseFloat):
-    inputs: list[AstBaseFloat] = required_field()
+    inputs: AstChildren[AstBaseFloat] = required_field()
+
+    def serialize(self, result):
+        result.append('{type:"minecraft:'+ self.type + '",inputs:[')
+        for input in self.inputs:
+            yield input
+            result.append(",")
+        result.append("]}")
+
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +136,15 @@ class AstBaseFloatBinaryOp(AstBaseFloat):
     left: AstBaseFloat = required_field()
     right: AstBaseFloat = required_field()
 
+    def serialize(self, result):
+        result.append('{type:"minecraft:')
+        result.append(self.type)
+        result.append('",left:')
+        yield self.left
+        result.append(',right:')
+        yield self.right
+        result.append('}')
+
 
 @dataclass(frozen=True, slots=True)
 class AstFloatSub(AstBaseFloatBinaryOp):
@@ -128,6 +170,14 @@ class AstFloatPow(AstBaseFloatBinaryOp):
 class AstBaseFloatConstant(AstBaseFloat):
     value: float = required_field()
 
+    def serialize(self, result):
+        if self.depth.value == 0:
+            result.append('{type:"minecraft:constant",value:')
+            result.append(str(self.value))
+            result.append('}')
+        else:
+            result.append(str(self.value))
+
 
 @dataclass(frozen=True, slots=True)
 class AstFloatConstant(AstBaseFloatConstant):
@@ -146,7 +196,7 @@ class AstFloatUniform(AstBaseFloatRange):
 
 
 @dataclass(frozen=True, slots=True)
-class AstFloatWeightedListEntry:
+class AstFloatWeightedListEntry(AstNode):
     data: AstBaseFloat = required_field()
     weight: int = required_field()
 
@@ -154,7 +204,7 @@ class AstFloatWeightedListEntry:
 @dataclass(frozen=True, slots=True)
 class AstFloatWeightedList(AstBaseFloat):
     type = "weighted_list"
-    distribution: list[AstFloatWeightedListEntry] = required_field()
+    distribution: AstChildren[AstFloatWeightedListEntry] = required_field()
 
 
 @dataclass(frozen=True, slots=True)

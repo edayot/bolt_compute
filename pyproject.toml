@@ -18,14 +18,14 @@ dev = [
 ]
 
 [tool.uv.sources]
-beet = { git = "https://github.com/edayot/beet", branch = "runtime_minecraft_version" }
-mecha = { git = "https://github.com/edayot/beet/", branch = "runtime_minecraft_version", subdirectory = "packages/mecha" }
-bolt = { git = "https://github.com/edayot/beet/", branch = "runtime_minecraft_version", subdirectory = "packages/bolt" }
+# beet = { git = "https://github.com/edayot/beet", branch = "runtime_minecraft_version" }
+# mecha = { git = "https://github.com/edayot/beet/", branch = "runtime_minecraft_version", subdirectory = "packages/mecha" }
+# bolt = { git = "https://github.com/edayot/beet/", branch = "runtime_minecraft_version", subdirectory = "packages/bolt" }
 
 # [tool.uv.sources]
-# beet = { path = "../beet", editable = true }
-# mecha = { path = "../beet/packages/mecha", editable = true }
-# bolt = { path = "../beet/packages/bolt", editable = true }
+beet = { path = "../beet", editable = true }
+mecha = { path = "../beet/packages/mecha", editable = true }
+bolt = { path = "../beet/packages/bolt", editable = true }
 
 
 [build-system]

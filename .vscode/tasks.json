@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "clear-beet-cache",
+      "type": "shell",
+      "command": "sh",
+      "args": ["-c", "cd ${workspaceFolder}/examples/basic && uv run beet cache -c mecha"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
