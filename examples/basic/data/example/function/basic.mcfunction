@@ -62,7 +62,8 @@ data modify storage example:main result_bolt set compute bolt float (avg(["1","2
 
 
 data modify storage example:main result_bolt set compute bolt integer (binomial(n=5, p=2,))
-data modify storage example:main result_bolt set compute bolt integer (uniform(5, 2,))
+data modify storage example:main result_bolt set compute bolt integer (binomial(5, 2))
+# data modify storage example:main result_bolt set compute bolt integer (uniform(5, 2,))
 
 # data modify storage example:main result_bolt set compute bolt float ("aaa:bbb")
 # data modify storage example:main result_bolt set compute bolt float ("aaa:bbb" + "ccc:ddd")

@@ -46,6 +46,13 @@ class AstIntegerBinomial(AstBaseInteger):
     n: AstBaseInteger = required_field()
     p: AstBaseFloat = required_field()
 
+    def serialize(self, result):
+        result.append('{type:"minecraft:binomial",n:')
+        yield self.n
+        result.append(',p:')
+        yield self.p
+        result.append('}')
+
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerConditional(AstBaseInteger):

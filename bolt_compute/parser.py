@@ -351,8 +351,8 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                     args.pop("depth")
                     args.pop("return")
                     assert validate_ast_dict(args)
-                    with stream.checkpoint() as commit:
-                        parsed_arguments: dict[str, AstBaseNode] = {}
+                    parsed_arguments: dict[str, AstBaseNode] = {}
+                    while len(args) > 0:
                         arg = stream.expect("argument")
                         if not arg.value in args:
                             commit.rollback = False
@@ -362,14 +362,25 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                         stream.expect("equal")
                         if issubclass(args[arg.value], AstBaseInteger):
                             with integer_syntax(stream):
-                                node = parse_expression(stream, "integer", 0)
+                                node = parse_expression(stream, "integer", depth + 1)
                         elif issubclass(args[arg.value], AstBaseFloat):
                             with float_syntax(stream):
-                                node = parse_expression(stream, "float", 0)
+                                node = parse_expression(stream, "float", depth + 1)
                         else:
                             raise NotImplementedError(args[arg.value])
-                        
-                        base_class = args.pop
+                        parsed_arguments[arg.value] = node
+                        args.pop(arg.value)
+                        if len(args)>0:
+                            stream.expect("comma")
+                        else:
+                            # optional comma at the end
+                            with stream.checkpoint() as c:
+                                stream.expect("comma")
+                                c()
+                    node = cls(**parsed_arguments, depth=MutableDepth(depth))
+                    stream.expect("cparent")
+                    set_location(node, token)
+                    return node
                     
                     raise NotImplementedError(args)
                     
