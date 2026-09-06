@@ -1,4 +1,6 @@
-from typing import Any, Literal, Type, TypeIs, assert_never, cast, overload, reveal_type
+from dataclasses import MISSING, Field, fields
+from types import NoneType
+from typing import Any, Literal, Type, TypeIs, Union, assert_never, cast, get_args, overload, reveal_type
 
 from bolt import AstCall, AstFormatString, AstIdentifier, AstValue
 from mecha import (
@@ -8,22 +10,14 @@ from mecha import (
 )
 from tokenstream import InvalidSyntax, Token, TokenStream, set_location
 
-from bolt_compute.node import AstBaseNode, AstComputeRoot, MutableDepth, FLOAT_NODES, INTEGER_NODES
+from bolt_compute.node import DEFAULT_NODE_ARGS, AstBaseNode, AstComputeRoot, MutableDepth, FLOAT_NODES, INTEGER_NODES
 from bolt_compute.float import *
 from bolt_compute.integer import *
 from bolt_compute.types import AdditiveOperation, BoltType, MultiplicativeOperation, Operation, OperationType
 from contextlib import contextmanager
+from collections import deque
 
 
-SCORE_TARGETS = (
-    "this",
-    "attacker",
-    "direct_attacker",
-    "attacking_player",
-    "target_entity",
-    "interacting_entity",
-    "fixed",
-)
 
 FUNCTIONS = (
     "abs",
@@ -39,13 +33,12 @@ def integer_syntax(stream: TokenStream):
         additive=r"\+|\-",
         multiplicative=r'\*\*' r'|\*' r'|\/\/' r'|\%',
         number=r"[+-]?[0-9]+",
+        quotes=r'"|\'',
+        call='|'.join([x + r'\(' for x in INTEGER_NODES.keys()]),
         storage=r"storage",
         score=r"score",
-        quotes=r'"|\'',
-        target="|".join(SCORE_TARGETS),
-        call='|'.join(INTEGER_NODES.keys())
     ):
-        with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "target"]}):
+        with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "call"]}):
             yield
 
 @contextmanager
@@ -57,13 +50,12 @@ def float_syntax(stream: TokenStream):
         additive=r"\+|\-",
         multiplicative=r'\*\*' r'|\*' r'|\/' r'|\%',
         number=r"[+-]?([0-9]*[.])?[0-9]+",
+        quotes=r'"|\'',
+        call='|'.join([x + r'\(' for x in FLOAT_NODES.keys()]),
         storage=r"storage",
         score=r"score",
-        quotes=r'"|\'',
-        target="|".join(SCORE_TARGETS),
-        call='|'.join(FLOAT_NODES.keys())
     ):
-        with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "target"]}):
+        with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "call"]}):
             yield
 
 @overload
@@ -241,12 +233,12 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
             elif isinstance(bolt_node.value, str):
                 if operation_type == "float":
                     commit()
-                    node = AstFloatReference(reference=bolt_node.value, depth=MutableDepth(depth))
+                    node = AstFloatReference(reference=AstResourceLocation.from_value(bolt_node.value), depth=MutableDepth(depth))
                     set_location(node, bolt_node)
                     return node
                 elif operation_type == "integer":
                     commit()
-                    node = AstIntegerReference(reference=bolt_node.value, depth=MutableDepth(depth))
+                    node = AstIntegerReference(reference=AstResourceLocation.from_value(bolt_node.value), depth=MutableDepth(depth))
                     set_location(node, bolt_node)
                     return node
         elif isinstance(bolt_node, (AstIdentifier, AstFormatString)):
@@ -294,28 +286,45 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                 node = t(input=parse_primary(stream, operation_type, depth+1), depth=MutableDepth(depth))
             set_location(node, token)
             return node
-        case Token("call"):
+        case Token("storage"):
+            storage = parse_node_or_union(stream, operation_type, {"type": AstResourceLocation, "required": True}, depth+1)
+            path = parse_node_or_union(stream, operation_type, {"type": AstNbtPath, "required": True}, depth+1)
             if operation_type == "float":
-                cls = FLOAT_NODES[token.value]
+                fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseFloat | None], "required": False, "has_default": True, "default": None}, depth+1)
+                node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth))
+            else:
+                fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
+                node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth))
+            set_location(node, token)
+            return node
+        case Token("score"):
+            score = parse_node_or_union(stream, operation_type, {"type": AstResourceLocation, "required": True}, depth+1)
+            target = parse_node_or_union(stream, operation_type, {"type": AstNbtPath, "required": True}, depth+1)
+            fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
+            node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth))
+            set_location(node, token)
+            return node
+
+        case Token("call"):
+            call_value = token.value[:-1]
+            if operation_type == "float":
+                cls = FLOAT_NODES[call_value]
                 input_cls = AstBaseFloatInput
                 inputs_cls = AstBaseFloatInputs
             elif operation_type == "integer":
-                cls = INTEGER_NODES[token.value]
+                cls = INTEGER_NODES[call_value]
                 input_cls = AstBaseFloatInput
                 inputs_cls = AstBaseFloatInputs
             else:
                 assert_never(operation_type)
-            stream.expect("oparent")
             with stream.syntax(
-                argument=r'[a-z]+',
-                equal=r'=',
+                argument=r'[a-z]+=',
                 comma=r','
             ):
                 # they are 2 option, named args and unamed args
                 if issubclass(cls, input_cls):
                     with stream.checkpoint() as commit:
-                        stream.expect(("argument", "input"))
-                        stream.expect("equal")
+                        stream.expect(("argument", "input="))
                         node = cls(input=parse_expression(stream, operation_type, depth+1), depth=MutableDepth(depth))
                         stream.expect("cparent")
                         set_location(node, token)
@@ -327,8 +336,7 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                     return node
                 elif issubclass(cls, inputs_cls):
                     with stream.checkpoint() as commit:
-                        stream.expect(("argument", "inputs"))
-                        stream.expect("equal")
+                        stream.expect(("argument", "inputs="))
                         node = cls(inputs=parse_list(stream, operation_type, depth+1), depth=MutableDepth(depth))
                         stream.expect("cparent")
                         set_location(node, token)
@@ -342,47 +350,11 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                         return node
                     node = cls(inputs=parse_star_arguments(stream, operation_type, depth+1), depth=MutableDepth(depth))
                     set_location(node, token)
-                    commit()
                     return node
                 else:
-                    args = inspect.get_annotations(cls.__init__)
-                    args.pop("location")
-                    args.pop("end_location")
-                    args.pop("depth")
-                    args.pop("return")
-                    assert validate_ast_dict(args)
-                    parsed_arguments: dict[str, AstBaseNode] = {}
-                    while len(args) > 0:
-                        arg = stream.expect("argument")
-                        if not arg.value in args:
-                            commit.rollback = False
-                            exc = InvalidSyntax(f"Unexpected {arg.value} argument of function {token.value}")
-                            set_location(exc, arg)
-                            raise exc
-                        stream.expect("equal")
-                        if issubclass(args[arg.value], AstBaseInteger):
-                            with integer_syntax(stream):
-                                node = parse_expression(stream, "integer", depth + 1)
-                        elif issubclass(args[arg.value], AstBaseFloat):
-                            with float_syntax(stream):
-                                node = parse_expression(stream, "float", depth + 1)
-                        else:
-                            raise NotImplementedError(args[arg.value])
-                        parsed_arguments[arg.value] = node
-                        args.pop(arg.value)
-                        if len(args)>0:
-                            stream.expect("comma")
-                        else:
-                            # optional comma at the end
-                            with stream.checkpoint() as c:
-                                stream.expect("comma")
-                                c()
-                    node = cls(**parsed_arguments, depth=MutableDepth(depth))
-                    stream.expect("cparent")
+                    node = parse_function_call(cls, stream, token, operation_type, depth)
                     set_location(node, token)
                     return node
-                    
-                    raise NotImplementedError(args)
                     
                 raise NotImplementedError(cls.__name__, cls.type)
 
@@ -392,12 +364,149 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
     raise NotImplementedError(token.type)
 
 
+def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: TokenStream, token: Token, operation_type: OperationType, depth: int):
+    """Parse function call with named arguments based on signature"""
+    
+    sig = inspect.signature(cls.__init__)
+    field_dict = {f.name: f for f in fields(cls)}
+    args = {}
+    
+    for param_name, param in sig.parameters.items():
+        if param_name in DEFAULT_NODE_ARGS:
+            continue
+        
+        annotation = param.annotation if param.annotation != inspect.Parameter.empty else None
+        has_default = param.default != inspect.Parameter.empty
+        default_value = param.default if has_default else None
+
+        # Get the default_factory from dataclass field
+        default_factory = None
+        has_default_factory = False
+        if param_name in field_dict:
+            field_obj = field_dict[param_name]
+            if field_obj.default_factory is not MISSING:
+                default_factory = field_obj.default_factory
+                has_default_factory = True
+                has_default = False
+                from beet.core.utils import _raise_required_field
+                if default_factory is _raise_required_field:
+                    has_default = False
+                    has_default_factory = False
+        
+        args[param_name] = {
+            "type": annotation,
+            "default": default_value,
+            "required": not(has_default or has_default_factory),
+            "has_default": has_default,
+            "default_factory": default_factory,
+            "has_default_factory": has_default_factory,
+        }
+    args_queue = deque(args.items())
+        
+    with stream.checkpoint() as commit:
+        parsed_arguments: dict[str, Any] = {}
+        
+        while len(args) > 0:
+            arg = stream.expect("argument")
+            arg_name = arg.value[:-1]
+            commit()
+            
+            if arg_name not in args:
+                expected = ", ".join(repr(x) for x in args.keys())
+                exc = InvalidSyntax(
+                    f"Expected {expected} but got {repr(arg_name)} argument of function {token.value}"
+                )
+                set_location(exc, arg)
+                raise exc
+            
+            node = parse_node_or_union(stream, operation_type, args[arg_name], depth)
+            if isinstance(node, AstNode):
+                set_location(node, arg)
+            parsed_arguments[arg_name] = node
+            args.pop(arg_name)
+            
+            if len(args) > 0:
+                stream.expect("comma")
+            else:
+                # optional comma at the end
+                with stream.checkpoint() as c:
+                    stream.expect("comma")
+                    c()
+        
+        node = cls(**parsed_arguments, depth=MutableDepth(depth)) # pyright: ignore[reportArgumentType]
+        stream.expect("cparent")
+        set_location(node, token)
+        commit()
+        return node
+    
+    parsed_arguments = {}
+    number_of_arguments_required = len([x for x in args_queue if x[1]["required"]])
+    while len(args_queue) > 0:
+        arg = args_queue.popleft()
+        with stream.syntax(
+            argument=None,
+        ):
+            node = parse_node_or_union(stream, operation_type, arg[1], depth)
+            if isinstance(node, AstNode):
+                set_location(node, arg)
+        parsed_arguments[arg[0]] = node
+        if len(args_queue)>0:
+            with stream.checkpoint() as commit:
+                stream.expect("comma")
+                commit()
+                continue
+            # comma are optional if and only if there is only argument with default values left
+            if not all(not x[1]["required"] for x in args_queue):
+                missing = ", ".join((repr(x[0]) for x in args_queue if x[1]["required"]))
+                number_of_arguments = len([x for x in args_queue if x[1]["required"]])
+
+                exc = InvalidSyntax(
+                    f"Not enought arguments expected {number_of_arguments_required} arguments but got {number_of_arguments} in function {token.value}, missing {missing}"
+                )
+                set_location(exc, token)
+                raise exc
+            # all parameters left have default values
+            while len(args_queue) > 0:
+                arg = args_queue.popleft()
+                parsed_arguments[arg[0]] = arg[1]["default"] if arg[1]["has_default"] else arg[1]["default_factory"]()
+        else:
+            # optional comma at the end
+            with stream.checkpoint() as c:
+                stream.expect("comma")
+                c()
+    node = cls(**parsed_arguments, depth=MutableDepth(depth))
+    stream.expect("cparent")
+    set_location(node, token)
+    return node
 
 
-def validate_ast_dict(args: dict[str, Any]) -> TypeIs[dict[str, type[AstBaseNode]]]:
-    for key, value in args.items():
-        if not issubclass(value, AstBaseNode): return False
-    return True
+
+def parse_node_or_union(stream: TokenStream, operation_type: OperationType, node_or_union: Any, depth: int):
+    if isinstance(node_or_union["type"], Union):
+        for arg in get_args(node_or_union["type"]):
+            with stream.checkpoint() as commit:
+                node = parse_node_or_union(stream, operation_type, {"type":arg, "required": True}, depth)
+                commit()
+                return node
+        if not node_or_union["required"]:
+            return node_or_union["default"] if node_or_union["has_default"] else node_or_union["default_factory"]()
+        raise InvalidSyntax("No successfull union detected")
+    elif issubclass(node_or_union["type"], AstBaseInteger):
+        with integer_syntax(stream):
+            return parse_expression(stream, "integer", depth + 1)
+    elif issubclass(node_or_union["type"], AstBaseFloat):
+        with float_syntax(stream):
+            return parse_expression(stream, "float", depth + 1)
+    elif hasattr(node_or_union["type"], 'parser') and node_or_union["type"].parser:
+        return delegate(node_or_union["type"].parser)(stream)
+    elif issubclass(node_or_union["type"], NoneType):
+        raise InvalidSyntax("None is not representable as a Literal")
+    else:
+        if not node_or_union["required"]:
+            return node_or_union["default"] if node_or_union["has_default"] else node_or_union["default_factory"]()
+        raise NotImplementedError(node_or_union)
+    raise NotImplementedError(node_or_union)
+
 
 
 

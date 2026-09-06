@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from beet.core.utils import required_field
 from bolt import AstFormatString, AstIdentifier
-from mecha import AstChildren, AstNode
+from mecha import AstChildren, AstNbtCompound, AstNbtList, AstNbtPath, AstNode, AstResourceLocation
 
 from bolt_compute.node import AstBaseInteger, AstBaseFloat
 from tokenstream import InvalidSyntax, set_location
@@ -22,12 +22,13 @@ class AstFloatNOP(AstBaseFloat):
 @dataclass(frozen=True, slots=True)
 class AstFloatReference(AstBaseFloat):
     type = "bolt_compute_reference"
-    reference: str = required_field()
+    reference: AstResourceLocation = required_field()
 
     def serialize(self, result):
-        if self.depth.value != 0: result.append('"')
-        result.append(self.reference)
-        if self.depth.value != 0: result.append('"')
+        if self.depth.value == 0:
+            result.append(self.reference.get_value())
+        else:
+            result.append(repr(self.reference.get_value()))
 
 @dataclass(frozen=True, slots=True)
 class AstFloatBoltVariable(AstBaseFloat):
@@ -38,7 +39,7 @@ class AstFloatBoltVariable(AstBaseFloat):
         if isinstance(self.value, (int, float)):
             yield AstFloatConstant(value=self.value, depth=self.depth)
         elif isinstance(self.value, str):
-            yield AstFloatReference(reference=self.value, depth=self.depth)
+            yield AstFloatReference(reference=AstResourceLocation.from_value(self.value), depth=self.depth)
         else:
             exc = InvalidSyntax(self.__class__.__name__, self.value, type(self.value))
             set_location(exc, self)
@@ -229,10 +230,27 @@ class AstFloatWeightedList(AstBaseFloat):
 @dataclass(frozen=True, slots=True)
 class AstFloatStorage(AstBaseFloat):
     type = "storage"
-    storage: str = required_field()
-    path: str = required_field()
-    fallback: AstBaseFloat = required_field()
+    storage: AstResourceLocation = required_field()
+    path: AstNbtPath = required_field()
+    fallback: typing.Optional[AstBaseFloat] = None
 
+    def serialize(self, result):
+        result.append('{type:"minecraft:')
+        result.append(self.type)
+        result.append('",storage:')
+        result.append(repr(self.storage.get_value()))
+        result.append(',path:')
+        index_start = len(result)
+        yield self.path
+        index_end = len(result)
+        node_value = "".join(result[index_start:index_end])
+        while len(result) != index_start:
+            result.pop()
+        result.append(repr(node_value))
+        if self.fallback:
+            result.append(',fallback:')
+            yield self.fallback
+        result.append('}')
 
 @dataclass(frozen=True, slots=True)
 class AstFloatEnvironmentAttribute(AstBaseFloat):
@@ -256,10 +274,23 @@ class AstFloatNumberDispatcher(AstBaseFloat):
 @dataclass(frozen=True, slots=True)
 class AstFloatConditional(AstBaseFloat):
     type = "conditional"
-    condition: AstNode = required_field()
+    condition: AstNbtCompound | AstNbtList | AstResourceLocation = required_field()
     on_true: AstBaseFloat = required_field()
     on_false: AstBaseFloat = required_field()
 
+    def serialize(self, result):
+        result.append('{type:"minecraft:')
+        result.append(self.type)
+        result.append('",condition:')
+        if isinstance(self.condition, AstResourceLocation):
+            result.append(repr(self.condition.get_value()))
+        else:
+            yield self.condition
+        result.append(',on_true:')
+        yield self.on_true
+        result.append(',on_false:')
+        yield self.on_false
+        result.append('}')
 
 @dataclass(frozen=True, slots=True)
 class AstFloatEnchantmentLevel(AstBaseFloat):

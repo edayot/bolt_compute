@@ -90,3 +90,6 @@ def serialize_node(node: AstComputeRoot | AstBaseNode, result: list[str]) -> Ite
         yield from node.serialize(result)
     else:
         return node.serialize(result)
+
+
+DEFAULT_NODE_ARGS = ("self", "location", "end_location", "depth", "return", "type", "serialize", "cast_float", "cast_int", "parser")

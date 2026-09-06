@@ -1,10 +1,11 @@
-import typing
 from dataclasses import dataclass
+from typing import Literal, Optional
 
 from beet.core.utils import required_field
 from bolt import AstFormatString, AstIdentifier
-from mecha import AstChildren, AstNode
+from mecha import AstChildren, AstNbt, AstNbtPath, AstNode, AstResourceLocation
 
+from bolt_compute.float import AstFloatStorage
 from bolt_compute.node import AstBaseInteger, AstBaseFloat
 
 
@@ -19,12 +20,13 @@ class AstIntegerNOP(AstBaseInteger):
 @dataclass(frozen=True, slots=True)
 class AstIntegerReference(AstBaseInteger):
     type = "reference"
-    reference: str = required_field()
+    reference: AstResourceLocation = required_field()
 
     def serialize(self, result):
-        if self.depth.value != 0: result.append('"')
-        result.append(self.reference)
-        if self.depth.value != 0: result.append('"')
+        if self.depth.value == 0:
+            result.append(self.reference.get_value())
+        else:
+            result.append(repr(self.reference.get_value()))
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerBoltVariable(AstBaseFloat):
@@ -35,7 +37,7 @@ class AstIntegerBoltVariable(AstBaseFloat):
         if isinstance(self.value, (int)):
             yield AstIntegerConstant(value=self.value, depth=self.depth)
         elif isinstance(self.value, str):
-            yield AstIntegerReference(reference=self.value, depth=self.depth)
+            yield AstIntegerReference(reference=AstResourceLocation.from_value(self.value), depth=self.depth)
         else:
             raise BaseException(self.__class__.__name__, self.value, type(self.value))
 
@@ -57,7 +59,7 @@ class AstIntegerBinomial(AstBaseInteger):
 @dataclass(frozen=True, slots=True)
 class AstIntegerConditional(AstBaseInteger):
     type = "conditional"
-    condition: AstNode = required_field()
+    condition: AstNbt | AstResourceLocation = required_field()
     on_true: AstBaseInteger = required_field()
     on_false: AstBaseInteger = required_field()
 
@@ -179,6 +181,14 @@ class AstBaseIntegerRange(AstBaseInteger):
 class AstIntegerUniform(AstBaseIntegerRange):
     type = "uniform"
 
+    def serialize(self, result):
+        result.append('{type:"minecraft:uniform",min:')
+        yield self.min
+        result.append(',max:')
+        yield self.max
+        result.append('}')
+
+
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerWeightedListEntry(AstNode):
@@ -192,20 +202,36 @@ class AstIntegerWeightedList(AstBaseInteger):
     distribution: AstChildren[AstIntegerWeightedListEntry] = required_field()
 
 
+type TargetTypeType = Literal["context", "fixed"]
+type TargetType = Literal["this", "attacker", "direct_attacker", "attacking_player", "target_entity", "interacting_entity"]
+
+@dataclass(frozen=True, slots=True)
+class Target:
+    type: TargetTypeType = required_field()
+    target: Optional[TargetType] = None
+    name: Optional[str] = None
+
+
+
 @dataclass(frozen=True, slots=True)
 class AstIntegerScore(AstBaseInteger):
     type = "score"
-    score: str = required_field()
     target: str = required_field()
+    score: str = required_field()
     fallback: AstBaseInteger = required_field()
 
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerStorage(AstBaseInteger):
     type = "storage"
-    storage: str = required_field()
-    path: str = required_field()
-    fallback: AstBaseInteger = required_field()
+    storage: AstResourceLocation = required_field()
+    path: AstNbtPath = required_field()
+    fallback: Optional[AstBaseInteger] = None
+
+    def serialize(self, result):
+        yield from AstFloatStorage.serialize(self, result) # pyright: ignore[reportArgumentType]
+
+
 
 
 @dataclass(frozen=True, slots=True)
