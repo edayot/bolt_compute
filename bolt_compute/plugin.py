@@ -1,11 +1,13 @@
 from beet import Context
 from mecha import (
+    BasicLiteralParser,
     CommandTree,
     Mecha,
     MultilineParser,
     delegate,
 )
 
+from bolt_compute.integer import AstTargetType, AstTargetTypeType
 from bolt_compute.node import serialize_node
 from bolt_compute.parser import operation_parser
 
@@ -71,5 +73,9 @@ def beet_default(ctx: Context):
     mc.spec.parsers["command:argument:bolt_compute:operation_parser"] = MultilineParser(
         operation_parser
     )
+    mc.spec.parsers.update({
+        "bolt_compute_ast_target_type": BasicLiteralParser(AstTargetType),
+        "bolt_compute_ast_target_type_type": BasicLiteralParser(AstTargetTypeType),
+    })
 
     mc.spec.update()

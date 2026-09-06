@@ -138,9 +138,59 @@ compute bolt float (
 
 scoreboard players set @s dummy 1
 # this = "aaa"
-# compute bolt float (
-#     (score this minecraft.dummy)
+compute bolt float (
+    (score this minecraft.dummy)
+)
+compute bolt float (
+    (score fixed this minecraft.dummy)
+)
+compute bolt float (
+    (score context this minecraft.dummy)
+)
+
+compute bolt integer (
+    (score this minecraft.dummy)
+)
+compute bolt integer (
+    (score fixed this minecraft.dummy)
+)
+compute bolt integer (
+    (score context this minecraft.dummy)
+)
+
+
+compute bolt integer from_float(43/7)
+compute bolt float from_int(43//7)
+
+
+compute bolt float (
+    (score this this)
+)
+compute bolt float (
+    (score fixed this this)
+)
+compute bolt float (
+    (score context this this)
+)
+
+compute bolt integer (
+    (score this this)
+)
+compute bolt integer (
+    (score fixed this this)
+)
+compute bolt integer (
+    (score context this this)
+)
+
+# a = "context"
+
+# compute bolt integer (
+#     (score a this this)
 # )
+
+
+
 # compute bolt float (
 #     (score this minecraft.dummy 42)
 # )

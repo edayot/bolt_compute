@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from typing import Literal, Optional
 
 from beet.core.utils import required_field
-from bolt import AstFormatString, AstIdentifier
-from mecha import AstChildren, AstNbt, AstNbtPath, AstNode, AstResourceLocation
+from bolt import AstExpression, AstFormatString, AstIdentifier
+from mecha import AstChildren, AstNbt, AstNbtPath, AstNode, AstObjective, AstOption, AstPlayerName, AstResourceLocation, AstUUID
 
 from bolt_compute.float import AstFloatStorage
 from bolt_compute.node import AstBaseInteger, AstBaseFloat
@@ -173,24 +173,49 @@ class AstIntegerWeightedList(AstBaseInteger):
     type = "weighted_list"
     distribution: AstChildren[AstIntegerWeightedListEntry] = required_field(metadata={"bolt_compute_serialize": True})
 
-
-type TargetTypeType = Literal["context", "fixed"]
-type TargetType = Literal["this", "attacker", "direct_attacker", "attacking_player", "target_entity", "interacting_entity"]
+@dataclass(frozen=True, slots=True)
+class AstTargetType(AstOption):
+    parser = "bolt_compute_ast_target_type"
+    options = {"this", "attacker", "direct_attacker", "attacking_player", "target_entity", "interacting_entity"}
 
 @dataclass(frozen=True, slots=True)
-class Target:
-    type: TargetTypeType = required_field(metadata={"bolt_compute_serialize": True})
-    target: Optional[TargetType] = field(default=None, metadata={"bolt_compute_serialize": True})
-    name: Optional[str] = field(default=None, metadata={"bolt_compute_serialize": True})
-
+class AstTargetTypeType(AstOption):
+    parser = "bolt_compute_ast_target_type_type"
+    options = {"context", "fixed"}
 
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerScore(AstBaseInteger):
     type = "score"
-    target: str = required_field(metadata={"bolt_compute_serialize": True})
-    score: str = required_field(metadata={"bolt_compute_serialize": True})
+    target_type: AstTargetTypeType | AstExpression = required_field(metadata={"bolt_compute_serialize": True})
+    target_target: Optional[AstTargetType | AstExpression] = field(default=None, metadata={"bolt_compute_serialize": True})
+    target_name: Optional[AstPlayerName|AstUUID] = field(default=None, metadata={"bolt_compute_serialize": True})
+    score: AstObjective = required_field(metadata={"bolt_compute_serialize": True})
     fallback: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
+
+    def serialize(self, result):
+        result.append('{type:"minecraft:score"')
+        result.append(',target:{')
+        result.append('type:"')
+        yield self.target_type
+        result.append('"')
+        if self.target_target:
+            result.append(',target:"')
+            yield self.target_target
+            result.append('"')
+        if self.target_name:
+            result.append(',name:"')
+            yield self.target_name
+            result.append('"')
+
+        result.append('}')
+        result.append(',score:"')
+        yield self.score
+        result.append('"')
+        if self.fallback:
+            result.append(',fallback:')
+            yield self.fallback
+        result.append('}')
 
 
 @dataclass(frozen=True, slots=True)

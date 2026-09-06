@@ -2,7 +2,7 @@ from dataclasses import MISSING, Field, fields
 from types import NoneType
 from typing import Any, Literal, Type, TypeIs, Union, assert_never, cast, get_args, overload, reveal_type
 
-from bolt import AstCall, AstFormatString, AstIdentifier, AstValue
+from bolt import AstCall, AstFormatString, AstIdentifier, AstValue, parse_identifier
 from mecha import (
     AstNode,
     UnrecognizedParser,
@@ -294,16 +294,15 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                 node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth+1))
             else:
                 fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
-                node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth+1))
+                node = AstIntegerStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth+1))
             set_location(node, token)
             return node
         case Token("score"):
-            raise NotImplementedError("score")
-            score = parse_node_or_union(stream, operation_type, {"type": AstResourceLocation, "required": True}, depth+1)
-            target = parse_node_or_union(stream, operation_type, {"type": AstNbtPath, "required": True}, depth+1)
-            fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
-            node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth))
+            node = parse_score(stream, operation_type, depth)
             set_location(node, token)
+            if operation_type == "integer": return node
+            node = AstFloatFromInt(input=node, depth=MutableDepth(depth))
+            set_location(node, token)            
             return node
 
         case Token("call"):
@@ -363,6 +362,33 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
         case _:
             raise NotImplementedError(token.type)
     raise NotImplementedError(token.type)
+
+def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
+    # by default literal context can be ommited
+    with stream.checkpoint() as commit:
+        target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True}, depth+1)
+        commit()
+        score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
+        fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
+        node = AstIntegerScore(target_type=AstTargetTypeType(value="context"), target_target=target_target, score=score, fallback=fallback, depth=MutableDepth(depth+1))
+        return node
+    # if it's not a AstTargetType, it must be AstTargetTypeType
+    target_type: AstTargetTypeType = parse_node_or_union(stream, operation_type, {"type": AstTargetTypeType, "required": True}, depth+1)
+    if target_type.value == "context":
+        target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True}, depth+1)
+        commit()
+        score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
+        fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
+        node = AstIntegerScore(target_type=target_type, target_target=target_target, score=score, fallback=fallback, depth=MutableDepth(depth+1))
+        return node
+    elif target_type.value == "fixed":
+        target_name = parse_node_or_union(stream, operation_type, {"type": Optional[AstPlayerName|AstUUID], "required": True}, depth+1)
+        commit()
+        score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
+        fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
+        node = AstIntegerScore(target_type=target_type, target_name=target_name, score=score, fallback=fallback, depth=MutableDepth(depth+1))
+        return node
+    raise NotImplementedError(target_type)
 
 
 def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: TokenStream, token: Token, operation_type: OperationType, depth: int):
@@ -499,6 +525,10 @@ def parse_node_or_union(stream: TokenStream, operation_type: OperationType, node
         with float_syntax(stream):
             return parse_expression(stream, "float", depth + 1)
     elif hasattr(node_or_union["type"], 'parser') and node_or_union["type"].parser:
+        # with stream.checkpoint() as commit:
+        #     node = parse_identifier(stream)
+        #     commit()
+        #     return node
         return delegate(node_or_union["type"].parser)(stream)
     elif issubclass(node_or_union["type"], NoneType):
         raise InvalidSyntax("None is not representable as a Literal")
