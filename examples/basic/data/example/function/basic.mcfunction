@@ -138,12 +138,12 @@ compute bolt float (
 
 scoreboard players set @s dummy 1
 # this = "aaa"
-compute bolt float (
-    (score this minecraft.dummy)
-)
-compute bolt float (
-    (score this minecraft.dummy 42)
-)
+# compute bolt float (
+#     (score this minecraft.dummy)
+# )
+# compute bolt float (
+#     (score this minecraft.dummy 42)
+# )
 
 # my_score = "minecarft.dummy"
 # my_thing = "attacker"

@@ -1,8 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
+from types import MappingProxyType
 from typing import Any, ClassVar, Generator, Iterable, Literal, Optional, Self, Type, TypeIs, overload
 
 from beet.core.utils import required_field
-from mecha import AstNode, rule
+from mecha import AstChildren, AstNbtPath, AstNode, AstResourceLocation, rule
 
 from bolt_compute.types import BoltType
 import inspect
@@ -32,6 +33,14 @@ class AstComputeRoot(AstNode):
         children_computed = "".join(result[children_start_index:children_last_index])
         # children_computed coud be used in the future for data validation
 
+def get_serializable_fields(instance) -> dict[str, MappingProxyType[Any, Any]]:
+    """Get all fields with bolt_compute_serialize metadata as {name: type}"""
+    return {
+        f.name: f.metadata
+        for f in fields(instance)
+        if f.metadata.get("bolt_compute_serialize")
+    }
+
 @dataclass(frozen=True, slots=True)
 class AstBaseNode(AstNode):
     type: ClassVar[str]
@@ -39,14 +48,43 @@ class AstBaseNode(AstNode):
     depth: MutableDepth = required_field()
 
     def serialize(self: Self, result: list[str]) -> Iterable[AstNode] | None:
-        source_file = inspect.getsourcefile(self.__class__)
-        source_lines = inspect.getsourcelines(self.__class__)
-        line_number = source_lines[1]
-        
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.serialize() - "
-            f"Implement in {source_file}:{line_number}"
-        )
+        result.append('{type:"minecraft:')
+        result.append(self.type)
+        result.append('"')
+        for field, metadata in get_serializable_fields(self).items():
+            value = getattr(self, field)
+            if value is None: continue
+            result.append(',')
+            result.append(field)
+            result.append(':')
+            if isinstance(value, AstResourceLocation):
+                if self.depth.value == 0:
+                    result.append(value.get_value())
+                else:
+                    result.append(repr(value.get_value()))
+            elif isinstance(value, AstNbtPath):
+                index_start = len(result)
+                yield value
+                index_end = len(result)
+                node_value = "".join(result[index_start:index_end])
+                while len(result) != index_start:
+                    result.pop()
+                result.append(repr(node_value))
+            elif isinstance(value, AstNode):
+                yield value
+            elif isinstance(value, (float, int)):
+                result.append(str(value))
+            elif isinstance(value, AstChildren):
+                result.append('[')
+                for child in value:
+                    yield child
+                    result.append(',')
+                result.append(']')
+            else:
+                raise NotImplementedError(field, type(value))
+        result.append('}')
+
+
 
     def cast_float(self) -> AstBaseFloat:
         assert self.value_type == "float"

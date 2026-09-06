@@ -291,13 +291,14 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
             path = parse_node_or_union(stream, operation_type, {"type": AstNbtPath, "required": True}, depth+1)
             if operation_type == "float":
                 fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseFloat | None], "required": False, "has_default": True, "default": None}, depth+1)
-                node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth))
+                node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth+1))
             else:
                 fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
-                node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth))
+                node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth+1))
             set_location(node, token)
             return node
         case Token("score"):
+            raise NotImplementedError("score")
             score = parse_node_or_union(stream, operation_type, {"type": AstResourceLocation, "required": True}, depth+1)
             target = parse_node_or_union(stream, operation_type, {"type": AstNbtPath, "required": True}, depth+1)
             fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
@@ -352,7 +353,7 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                     set_location(node, token)
                     return node
                 else:
-                    node = parse_function_call(cls, stream, token, operation_type, depth)
+                    node = parse_function_call(cls, stream, token, operation_type, depth+1)
                     set_location(node, token)
                     return node
                     

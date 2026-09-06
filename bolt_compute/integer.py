@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, Optional
 
 from beet.core.utils import required_field
@@ -12,7 +12,7 @@ from bolt_compute.node import AstBaseInteger, AstBaseFloat
 @dataclass(frozen=True, slots=True)
 class AstIntegerNOP(AstBaseInteger):
     type = "bolt_compute_nop"
-    children: AstBaseInteger = required_field()
+    children: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
     def serialize(self, result):
         yield self.children
@@ -20,18 +20,12 @@ class AstIntegerNOP(AstBaseInteger):
 @dataclass(frozen=True, slots=True)
 class AstIntegerReference(AstBaseInteger):
     type = "reference"
-    reference: AstResourceLocation = required_field()
-
-    def serialize(self, result):
-        if self.depth.value == 0:
-            result.append(self.reference.get_value())
-        else:
-            result.append(repr(self.reference.get_value()))
+    reference: AstResourceLocation = required_field(metadata={"bolt_compute_serialize": True})
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerBoltVariable(AstBaseFloat):
     type = "bolt_variable"
-    value: AstIdentifier | AstFormatString = required_field()
+    value: AstIdentifier | AstFormatString = required_field(metadata={"bolt_compute_serialize": True})
 
     def serialize(self, result):
         if isinstance(self.value, (int)):
@@ -45,28 +39,21 @@ class AstIntegerBoltVariable(AstBaseFloat):
 @dataclass(frozen=True, slots=True)
 class AstIntegerBinomial(AstBaseInteger):
     type = "binomial"
-    n: AstBaseInteger = required_field()
-    p: AstBaseFloat = required_field()
-
-    def serialize(self, result):
-        result.append('{type:"minecraft:binomial",n:')
-        yield self.n
-        result.append(',p:')
-        yield self.p
-        result.append('}')
+    n: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
+    p: AstBaseFloat = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerConditional(AstBaseInteger):
     type = "conditional"
-    condition: AstNbt | AstResourceLocation = required_field()
-    on_true: AstBaseInteger = required_field()
-    on_false: AstBaseInteger = required_field()
+    condition: AstNbt | AstResourceLocation = required_field(metadata={"bolt_compute_serialize": True})
+    on_true: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
+    on_false: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
 class AstBaseIntegerInput(AstBaseInteger):
-    input: AstBaseInteger = required_field()
+    input: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +63,7 @@ class AstIntegerAbs(AstBaseIntegerInput):
 
 @dataclass(frozen=True, slots=True)
 class AstBaseIntegerInputs(AstBaseInteger):
-    inputs: list[AstBaseInteger] = required_field()
+    inputs: list[AstBaseInteger] = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,15 +73,8 @@ class AstIntegerAvg(AstBaseIntegerInputs):
 
 @dataclass(frozen=True, slots=True)
 class AstBaseIntegerBinaryOp(AstBaseInteger):
-    left: AstBaseInteger = required_field()
-    right: AstBaseInteger = required_field()
-
-    def serialize(self, result):
-        result.append('{type:"minecraft:'+self.type+'",left:')
-        yield self.left
-        result.append(',right:')
-        yield self.left
-        result.append('}')
+    left: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
+    right: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerSub(AstBaseIntegerBinaryOp):
@@ -129,7 +109,7 @@ class AstIntegerPow(AstBaseIntegerBinaryOp):
 @dataclass(frozen=True, slots=True)
 class AstIntegerConstant(AstBaseInteger):
     type = "constant"
-    value: int = required_field()
+    value: int = required_field(metadata={"bolt_compute_serialize": True})
 
     def serialize(self, result):
         if self.depth.value == 0:
@@ -168,38 +148,30 @@ class AstIntegerNegate(AstBaseIntegerInput):
 @dataclass(frozen=True, slots=True)
 class AstIntegerFromFloat(AstBaseInteger):
     type = "from_float"
-    input: AstBaseFloat = required_field()
+    input: AstBaseFloat = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
 class AstBaseIntegerRange(AstBaseInteger):
-    min: AstBaseInteger = required_field()
-    max: AstBaseInteger = required_field()
+    min: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
+    max: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerUniform(AstBaseIntegerRange):
     type = "uniform"
 
-    def serialize(self, result):
-        result.append('{type:"minecraft:uniform",min:')
-        yield self.min
-        result.append(',max:')
-        yield self.max
-        result.append('}')
-
-
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerWeightedListEntry(AstNode):
-    data: AstBaseInteger = required_field()
-    weight: int = required_field()
+    data: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
+    weight: int = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerWeightedList(AstBaseInteger):
     type = "weighted_list"
-    distribution: AstChildren[AstIntegerWeightedListEntry] = required_field()
+    distribution: AstChildren[AstIntegerWeightedListEntry] = required_field(metadata={"bolt_compute_serialize": True})
 
 
 type TargetTypeType = Literal["context", "fixed"]
@@ -207,29 +179,26 @@ type TargetType = Literal["this", "attacker", "direct_attacker", "attacking_play
 
 @dataclass(frozen=True, slots=True)
 class Target:
-    type: TargetTypeType = required_field()
-    target: Optional[TargetType] = None
-    name: Optional[str] = None
+    type: TargetTypeType = required_field(metadata={"bolt_compute_serialize": True})
+    target: Optional[TargetType] = field(default=None, metadata={"bolt_compute_serialize": True})
+    name: Optional[str] = field(default=None, metadata={"bolt_compute_serialize": True})
 
 
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerScore(AstBaseInteger):
     type = "score"
-    target: str = required_field()
-    score: str = required_field()
-    fallback: AstBaseInteger = required_field()
+    target: str = required_field(metadata={"bolt_compute_serialize": True})
+    score: str = required_field(metadata={"bolt_compute_serialize": True})
+    fallback: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerStorage(AstBaseInteger):
     type = "storage"
-    storage: AstResourceLocation = required_field()
-    path: AstNbtPath = required_field()
-    fallback: Optional[AstBaseInteger] = None
-
-    def serialize(self, result):
-        yield from AstFloatStorage.serialize(self, result) # pyright: ignore[reportArgumentType]
+    storage: AstResourceLocation = required_field(metadata={"bolt_compute_serialize": True})
+    path: AstNbtPath = required_field(metadata={"bolt_compute_serialize": True})
+    fallback: Optional[AstBaseInteger] = field(default=None, metadata={"bolt_compute_serialize": True})
 
 
 
@@ -237,17 +206,17 @@ class AstIntegerStorage(AstBaseInteger):
 @dataclass(frozen=True, slots=True)
 class AstIntegerEnvironmentAttribute(AstBaseInteger):
     type = "environment_attribute"
-    attribute: str = required_field()
+    attribute: str = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
 class AstBaseIntegerNumberDispatcherCase:
-    condition: AstNode = required_field()
-    value: AstBaseInteger = required_field()
+    condition: AstNode = required_field(metadata={"bolt_compute_serialize": True})
+    value: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerNumberDispatcher(AstBaseInteger):
     type = "number_dispatcher"
-    cases: list[AstBaseIntegerNumberDispatcherCase] = required_field()
-    default: AstBaseInteger = required_field()
+    cases: list[AstBaseIntegerNumberDispatcherCase] = required_field(metadata={"bolt_compute_serialize": True})
+    default: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
