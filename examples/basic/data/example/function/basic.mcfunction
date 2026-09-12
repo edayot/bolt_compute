@@ -190,22 +190,28 @@ compute bolt integer (
     (score context this this 15)
 )
 
-# arg1 = "fixed"
-# arg2 = "this"
-# arg3 = "score"
-# arg4 = "minecraft:callback"
+arg1 = "fixed"
+arg2 = "this"
+arg3 = "score"
+arg4 = "minecraft:callback"
 
-# compute bolt float (
-#     score arg1 arg2 arg3 arg4
-# )
+compute bolt float (
+    score arg1 arg2 arg3 arg4
+)
 
+arg1 = "this"
+arg3 = "score"
+arg4 = "minecraft:callback"
 
-# arg1 = "fixed"
-# arg2 = "this"
-# arg3 = "score"
+compute bolt float (
+    score arg1 arg3 arg4
+)
 
-# compute bolt float (
-#     storage arg1 arg2 arg3
-# )
+arg2 = "fixed"
+
+compute bolt float (
+    # if you start using bolt variable, next values must be 
+    score arg2 "jeb_" "my_scoreeee" 15
+)
 
 

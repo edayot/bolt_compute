@@ -4,6 +4,7 @@ from typing import Any, Literal, Type, TypeIs, Union, assert_never, cast, get_ar
 
 from bolt import AstCall, AstFormatString, AstIdentifier, AstValue, parse_identifier
 from mecha import (
+    AlternativeParser,
     AstNode,
     UnrecognizedParser,
     delegate,
@@ -58,6 +59,12 @@ def float_syntax(stream: TokenStream):
     ):
         with stream.provide(bolt_compute_keywords={x: None for x in ["conditional", "storage", "score", "call"]}):
             yield
+
+
+def as_mecha_parser(operation_type: OperationType, depth: int):
+    def func(stream: TokenStream):
+        return parse_expression(stream, operation_type, depth)
+    return func
 
 @overload
 def parse_expression(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstBaseFloat: ...
@@ -127,7 +134,7 @@ def parse_additive(stream: TokenStream, operation_type: OperationType, depth: in
             match op:
                 case "+":
                     if operation_type == "integer":
-                        lvalue = AstIntegerAdd(inputs=[lvalue.cast_int(), rvalue.cast_int()], depth=MutableDepth(depth))
+                        lvalue = AstIntegerAdd(inputs=AstChildren([lvalue.cast_int(), rvalue.cast_int()]), depth=MutableDepth(depth))
                     elif operation_type == "float":
                         lvalue = AstFloatAdd(inputs=AstChildren([lvalue.cast_float(), rvalue.cast_float()]), depth=MutableDepth(depth))
                 case "-":
@@ -164,7 +171,7 @@ def parse_multiplicative(stream: TokenStream, operation_type: OperationType, dep
             match op:
                 case "*":
                     if operation_type == "integer":
-                        lvalue = AstIntegerMul(inputs=[lvalue.cast_int(), rvalue.cast_int()], depth=MutableDepth(depth))
+                        lvalue = AstIntegerMul(inputs=AstChildren([lvalue.cast_int(), rvalue.cast_int()]), depth=MutableDepth(depth))
                     elif operation_type == "float":
                         lvalue = AstFloatMul(inputs=AstChildren([lvalue.cast_float(), rvalue.cast_float()]), depth=MutableDepth(depth))
                 case "**":
@@ -374,23 +381,33 @@ def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
         node = AstIntegerScore(target_type=AstTargetTypeType(value="context"), target_target=target_target, score=score, fallback=fallback, depth=MutableDepth(depth+1))
         return node
     # if it's not a AstTargetType, it must be AstTargetTypeType
-    target_type: AstTargetTypeType = parse_node_or_union(stream, operation_type, {"type": AstTargetTypeType, "required": True}, depth+1)
-    if target_type.value == "context":
-        target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True}, depth+1)
-        commit()
-        score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
-        fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
-        node = AstIntegerScore(target_type=target_type, target_target=target_target, score=score, fallback=fallback, depth=MutableDepth(depth+1))
-        return node
-    elif target_type.value == "fixed":
-        target_name = parse_node_or_union(stream, operation_type, {"type": Optional[AstPlayerName|AstUUID], "required": True}, depth+1)
-        commit()
-        score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
-        fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
-        node = AstIntegerScore(target_type=target_type, target_name=target_name, score=score, fallback=fallback, depth=MutableDepth(depth+1))
-        return node
-    raise NotImplementedError(target_type)
-
+    with stream.checkpoint() as commit:
+        target_type: AstTargetTypeType = parse_node_or_union(stream, operation_type, {"type": AstTargetTypeType, "required": True}, depth+1)
+        if target_type.value == "context":
+            target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True}, depth+1)
+            score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
+            fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
+            node = AstIntegerScore(target_type=target_type, target_target=target_target, score=score, fallback=fallback, depth=MutableDepth(depth+1))
+            commit()
+            return node
+        elif target_type.value == "fixed":
+            target_name = parse_node_or_union(stream, operation_type, {"type": Optional[AstPlayerName|AstUUID], "required": True}, depth+1)
+            score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
+            fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
+            node = AstIntegerScore(target_type=target_type, target_name=target_name, score=score, fallback=fallback, depth=MutableDepth(depth+1))
+            commit()
+            return node
+    # bolt expression will be resolved later
+    args: list[AstExpression] = []
+    for _ in range(5):
+        with stream.checkpoint() as commit:
+            bolt_expression_parser = AlternativeParser([delegate("bolt:primary"), as_mecha_parser(operation_type, depth+1)])
+            args.append(AstNodeContainer(value=bolt_expression_parser(stream)))
+            commit()
+            continue
+        break
+    node = AstIntegerScoreResolveLater(args=AstChildren(args), depth=MutableDepth(depth+1))
+    return node
 
 def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: TokenStream, token: Token, operation_type: OperationType, depth: int):
     """Parse function call with named arguments based on signature"""

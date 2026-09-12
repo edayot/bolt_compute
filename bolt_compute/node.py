@@ -3,6 +3,7 @@ from types import MappingProxyType
 from typing import Any, ClassVar, Generator, Iterable, Literal, Optional, Self, Type, TypeIs, overload
 
 from beet.core.utils import required_field
+from bolt import AstExpression
 from mecha import AstChildren, AstNbtPath, AstNode, AstResourceLocation, rule
 
 from bolt_compute.types import BoltType
@@ -133,6 +134,12 @@ def serialize_node(node: AstComputeRoot | AstBaseNode, result: list[str]) -> Ite
         yield from node.serialize(result)
     else:
         return node.serialize(result)
+
+
+@dataclass(frozen=True, slots=True)
+class AstNodeContainer(AstNode):
+    value: AstNode = required_field()
+
 
 
 DEFAULT_NODE_ARGS = ("self", "location", "end_location", "depth", "return", "type", "serialize", "cast_float", "cast_int", "parser")
