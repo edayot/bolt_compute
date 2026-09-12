@@ -186,12 +186,13 @@ class AstTargetTypeType(AstOption):
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerScore(AstBaseInteger):
+    _disable_function_call = True
     type = "score"
-    target_type: AstTargetTypeType | AstExpression = required_field(metadata={"bolt_compute_serialize": True})
-    target_target: Optional[AstTargetType | AstExpression] = field(default=None, metadata={"bolt_compute_serialize": True})
+    target_type: AstTargetTypeType = required_field(metadata={"bolt_compute_serialize": True})
+    target_target: Optional[AstTargetType] = field(default=None, metadata={"bolt_compute_serialize": True})
     target_name: Optional[AstPlayerName|AstUUID] = field(default=None, metadata={"bolt_compute_serialize": True})
     score: AstObjective = required_field(metadata={"bolt_compute_serialize": True})
-    fallback: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
+    fallback: Optional[AstBaseInteger] = required_field(metadata={"bolt_compute_serialize": True})
 
     def serialize(self, result):
         result.append('{type:"minecraft:score"')
@@ -216,6 +217,8 @@ class AstIntegerScore(AstBaseInteger):
             result.append(',fallback:')
             yield self.fallback
         result.append('}')
+
+
 
 
 @dataclass(frozen=True, slots=True)

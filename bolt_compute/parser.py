@@ -16,6 +16,7 @@ from bolt_compute.integer import *
 from bolt_compute.types import AdditiveOperation, BoltType, MultiplicativeOperation, Operation, OperationType
 from contextlib import contextmanager
 from collections import deque
+from beet.core.utils import _raise_required_field
 
 
 
@@ -415,7 +416,6 @@ def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: 
                 default_factory = field_obj.default_factory
                 has_default_factory = True
                 has_default = False
-                from beet.core.utils import _raise_required_field
                 if default_factory is _raise_required_field:
                     has_default = False
                     has_default_factory = False
@@ -488,7 +488,7 @@ def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: 
                 number_of_arguments = len([x for x in args_queue if x[1]["required"]])
 
                 exc = InvalidSyntax(
-                    f"Not enought arguments expected {number_of_arguments_required} arguments but got {number_of_arguments} in function {token.value}, missing {missing}"
+                    f"Not enought arguments expected {number_of_arguments_required} arguments but got {number_of_arguments} in function {token.value[:-1]}, missing {missing}"
                 )
                 set_location(exc, token)
                 raise exc
@@ -525,13 +525,11 @@ def parse_node_or_union(stream: TokenStream, operation_type: OperationType, node
         with float_syntax(stream):
             return parse_expression(stream, "float", depth + 1)
     elif hasattr(node_or_union["type"], 'parser') and node_or_union["type"].parser:
-        # with stream.checkpoint() as commit:
-        #     node = parse_identifier(stream)
-        #     commit()
-        #     return node
         return delegate(node_or_union["type"].parser)(stream)
     elif issubclass(node_or_union["type"], NoneType):
-        raise InvalidSyntax("None is not representable as a Literal")
+        with stream.syntax(none="None"):
+            stream.expect("none")
+        return None
     else:
         if not node_or_union["required"]:
             return node_or_union["default"] if node_or_union["has_default"] else node_or_union["default_factory"]()

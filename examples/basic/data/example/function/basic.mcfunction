@@ -182,30 +182,30 @@ compute bolt integer (
 compute bolt integer (
     (score context this this)
 )
+compute bolt integer (
+    (score context this this 15)
+)
 
-# a = "context"
+compute bolt integer (
+    (score context this this 15)
+)
 
-# compute bolt integer (
-#     (score a this this)
-# )
-
-
-
-# compute bolt float (
-#     (score this minecraft.dummy 42)
-# )
-
-# my_score = "minecarft.dummy"
-# my_thing = "attacker"
+# arg1 = "fixed"
+# arg2 = "this"
+# arg3 = "score"
+# arg4 = "minecraft:callback"
 
 # compute bolt float (
-#     (score my_thing my_score)
-# )
-# compute bolt float (
-#     (score fixed my_thing my_score)
+#     score arg1 arg2 arg3 arg4
 # )
 
 
+# arg1 = "fixed"
+# arg2 = "this"
+# arg3 = "score"
+
 # compute bolt float (
-#     (score fixed jeb_ my_score)
+#     storage arg1 arg2 arg3
 # )
+
+

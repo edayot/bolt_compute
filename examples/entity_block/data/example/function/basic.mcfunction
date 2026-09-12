@@ -1,3 +1,3 @@
 
-compute bolt_entity @s score this dummy
-compute bolt_block 0 0 0 (1+2)
+compute bolt_entity @s float score this dummy
+compute bolt_block 0 0 0 float (1+2)

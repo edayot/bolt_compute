@@ -46,6 +46,7 @@ class AstBaseNode(AstNode):
     type: ClassVar[str]
     value_type: ClassVar[Literal["integer", "float"]]
     depth: MutableDepth = required_field()
+    _disable_function_call: ClassVar[bool] = False
 
     def serialize(self: Self, result: list[str]) -> Iterable[AstNode] | None:
         result.append('{type:"minecraft:')
@@ -104,9 +105,11 @@ class AstBaseInteger(AstBaseNode):
     value_type = "integer"
 
     def __init_subclass__(cls) -> None:
-        type = getattr(cls, "type", None)
-        if type is not None and isinstance(type, str) and not type.startswith("bolt_compute_"):
-            INTEGER_NODES[type] = cls
+        _disable_function_call = getattr(cls, "_disable_function_call", False)
+        if not _disable_function_call:
+            type = getattr(cls, "type", None)
+            if type is not None and isinstance(type, str) and not type.startswith("bolt_compute_"):
+                INTEGER_NODES[type] = cls
         return super().__init_subclass__()
 
 
@@ -115,9 +118,11 @@ class AstBaseFloat(AstBaseNode):
     value_type = "float"
 
     def __init_subclass__(cls) -> None:
-        type = getattr(cls, "type", None)
-        if type is not None and isinstance(type, str) and not type.startswith("bolt_compute_"):
-            FLOAT_NODES[type] = cls
+        _disable_function_call = getattr(cls, "_disable_function_call", False)
+        if not _disable_function_call:
+            type = getattr(cls, "type", None)
+            if type is not None and isinstance(type, str) and not type.startswith("bolt_compute_"):
+                FLOAT_NODES[type] = cls
         return super().__init_subclass__()
 
 
