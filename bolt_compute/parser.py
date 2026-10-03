@@ -63,7 +63,13 @@ def float_syntax(stream: TokenStream):
 
 def as_mecha_parser(operation_type: OperationType, depth: int):
     def func(stream: TokenStream):
-        return parse_expression(stream, operation_type, depth)
+        if operation_type == "float":
+            with float_syntax(stream):
+                return parse_expression(stream, operation_type, depth)
+        elif operation_type == "integer":
+            with integer_syntax(stream):
+                return parse_expression(stream, operation_type, depth)
+        raise ValueError(f"invalid {operation_type=}")
     return func
 
 @overload
@@ -368,10 +374,28 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
 
             raise NotImplementedError()
         case _:
-            raise NotImplementedError(token.type)
+            exc = InvalidSyntax(token.type)
+            set_location(exc, token)
+            raise exc
     raise NotImplementedError(token.type)
 
 def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
+    with stream.checkpoint() as commit:
+        # bolt expression will be resolved later    
+        args: list[AstNodeContainer] = []
+        for _ in range(5):
+            with stream.checkpoint() as commit1:
+                bolt_expression_parser = AlternativeParser([delegate("bolt:primary")])
+                arg = AstNodeContainer(value=bolt_expression_parser(stream))
+                args.append(arg)
+                commit1()
+                continue
+            break
+        if len(args) < 2:
+            raise InvalidSyntax("score literal must have at least two arguments", args)
+        node = AstIntegerScoreResolveLater(args=AstChildren(args), depth=MutableDepth(depth+1))
+        commit()
+        return node
     # by default literal context can be ommited
     with stream.checkpoint() as commit:
         target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True}, depth+1)
@@ -397,17 +421,7 @@ def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
             node = AstIntegerScore(target_type=target_type, target_name=target_name, score=score, fallback=fallback, depth=MutableDepth(depth+1))
             commit()
             return node
-    # bolt expression will be resolved later
-    args: list[AstExpression] = []
-    for _ in range(5):
-        with stream.checkpoint() as commit:
-            bolt_expression_parser = AlternativeParser([delegate("bolt:primary"), as_mecha_parser(operation_type, depth+1)])
-            args.append(AstNodeContainer(value=bolt_expression_parser(stream)))
-            commit()
-            continue
-        break
-    node = AstIntegerScoreResolveLater(args=AstChildren(args), depth=MutableDepth(depth+1))
-    return node
+    raise NotImplementedError()
 
 def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: TokenStream, token: Token, operation_type: OperationType, depth: int):
     """Parse function call with named arguments based on signature"""

@@ -215,3 +215,8 @@ compute bolt float (
 )
 
 
+compute default float (
+    1*2
+)
+
+

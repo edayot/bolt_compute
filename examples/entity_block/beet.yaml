@@ -4,15 +4,12 @@ data_pack:
   load: .
 
 require:
-  - beet.contrib.snapshot
   # - mecha.contrib.debug_ast
   - bolt
   - bolt_compute
 
 pipeline:
   - mecha
-
-minecraft: "26.3-pre-1"
 
 output: build
 

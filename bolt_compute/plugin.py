@@ -1,15 +1,17 @@
-from beet import Context
+from beet import Context, configurable
 from mecha import (
+    AlternativeParser,
     BasicLiteralParser,
     CommandTree,
     Mecha,
     MultilineParser,
     delegate,
 )
+from pydantic import BaseModel
 
 from bolt_compute.integer import AstTargetType, AstTargetTypeType
 from bolt_compute.node import serialize_node
-from bolt_compute.parser import operation_parser
+from bolt_compute.parser import as_mecha_parser, operation_parser
 
 
 def iter_compute_tree(tree: CommandTree):
@@ -51,15 +53,26 @@ def iter_compute_tree(tree: CommandTree):
                                         compute = index.children["compute"]
                                         yield compute
 
+class BoltComputeOpts(BaseModel):
+    default_command: bool = True
+    """
+        Makes bolt_compute expressions available to all commands 
+        using `command:argument:minecraft:context_float_provider` or `command:argument:minecraft:context_int_provider`
 
-def beet_default(ctx: Context):
+        `bolt`, `bolt_block`, `bolt_entity` keywords are used if this value is False
+    """
+
+
+@configurable("bolt_compute", validator=BoltComputeOpts)
+def beet_default(ctx: Context, opts: BoltComputeOpts):
     mc = ctx.inject(Mecha)
-    mc.spec.parsers["command:argument:minecraft:context_float_provider"] = (
-        MultilineParser(delegate("resource_location_or_nbt"))
-    )
-    mc.spec.parsers["command:argument:minecraft:context_int_provider"] = (
-        MultilineParser(delegate("resource_location_or_nbt"))
-    )
+    if opts.default_command:
+        mc.spec.parsers["command:argument:minecraft:context_float_provider"] = (
+            AlternativeParser([mc.spec.parsers["command:argument:minecraft:context_float_provider"], MultilineParser(as_mecha_parser("float", 0))])
+        )
+        mc.spec.parsers["command:argument:minecraft:context_int_provider"] = (
+            AlternativeParser([mc.spec.parsers["command:argument:minecraft:context_int_provider"], MultilineParser(as_mecha_parser("integer", 0))])
+        )
     mc.serialize.add_rule(serialize_node)
 
     for compute in iter_compute_tree(mc.spec.tree):
