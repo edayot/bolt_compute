@@ -385,14 +385,15 @@ def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
         args: list[AstNodeContainer] = []
         for _ in range(5):
             with stream.checkpoint() as commit1:
-                bolt_expression_parser = AlternativeParser([delegate("bolt:primary")])
+                bolt_expression_parser = delegate("bolt:primary")
                 arg = AstNodeContainer(value=bolt_expression_parser(stream))
                 args.append(arg)
                 commit1()
                 continue
             break
         if len(args) < 2:
-            raise InvalidSyntax("score literal must have at least two arguments", args)
+            print(args)
+            raise stream.emit_error(InvalidSyntax("score literal must have at least two arguments", args))
         node = AstIntegerScoreResolveLater(args=AstChildren(args), depth=MutableDepth(depth+1))
         commit()
         return node
@@ -421,7 +422,7 @@ def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
             node = AstIntegerScore(target_type=target_type, target_name=target_name, score=score, fallback=fallback, depth=MutableDepth(depth+1))
             commit()
             return node
-    raise NotImplementedError()
+    raise stream.emit_error(InvalidSyntax("w"))
 
 def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: TokenStream, token: Token, operation_type: OperationType, depth: int):
     """Parse function call with named arguments based on signature"""
