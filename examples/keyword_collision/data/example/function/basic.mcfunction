@@ -25,7 +25,7 @@ compute bolt float (score this sum)
 compute bolt float (score this average)
 
 
-compute bolt float (score "this" "this")
-compute bolt float (score this sum)
-compute bolt float (score 'this' "average")
+compute bolt float (score "context" "this" "this")
+compute bolt float (score context this sum)
+compute bolt float (score "context" 'this' "average")
 

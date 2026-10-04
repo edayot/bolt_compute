@@ -1,0 +1,18 @@
+
+
+data_pack:
+  load: .
+
+require:
+  # - mecha.contrib.debug_ast
+  - bolt
+  - bolt_compute
+
+pipeline:
+  - mecha
+
+output: build
+
+meta:
+  debug_ast:
+    location: true

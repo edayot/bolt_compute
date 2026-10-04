@@ -72,9 +72,8 @@ compute default float {type:"minecraft:from_int",input:{type:"minecraft:score",t
 compute default integer {type:"minecraft:score",target:{type:"context",target:"this"},score:"this"}
 compute default integer {type:"minecraft:score",target:{type:"fixed",name:"this"},score:"this"}
 compute default integer {type:"minecraft:score",target:{type:"context",target:"this"},score:"this"}
-compute default integer {type:"minecraft:score",target:{type:"context",target:"this"},score:"this",fallback:15}
-compute default integer {type:"minecraft:score",target:{type:"context",target:"this"},score:"this",fallback:15}
-compute default float {type:"minecraft:from_int",input:{type:"minecraft:score",target:{type:"fixed",name:"this"},score:"score",fallback:'minecraft:callback'}}
-compute default float {type:"minecraft:from_int",input:{type:"minecraft:score",target:{type:"context",target:"this"},score:"score",fallback:'minecraft:callback'}}
-compute default float {type:"minecraft:from_int",input:{type:"minecraft:score",target:{type:"fixed",name:"jeb_"},score:"my_scoreeee",fallback:15}}
+compute default integer {type:"minecraft:score",target:{type:"context",target:"this"},score:"this"}
+compute default integer {type:"minecraft:score",target:{type:"context",target:"this"},score:"this"}
+compute default float {type:"minecraft:from_int",input:{type:"minecraft:score",target:{type:"fixed",name:"this"},score:"score"}}
+compute default float {type:"minecraft:from_int",input:{type:"minecraft:score",target:{type:"fixed",name:"jeb_"},score:"my_scoreeee"}}
 compute default float 2

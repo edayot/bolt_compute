@@ -190,21 +190,14 @@ compute bolt integer (
     (score context this this)
 )
 
+# When using bolt variable, the full expression (with 3 elements must be used)
+
 arg1 = "fixed"
 arg2 = "this"
 arg3 = "score"
-arg4 = "minecraft:callback"
 
 compute bolt float (
-    score arg1 arg2 arg3 arg4
-)
-
-arg1 = "this"
-arg3 = "score"
-arg4 = "minecraft:callback"
-
-compute bolt float (
-    score arg1 arg3 arg4
+    score arg1 arg2 arg3
 )
 
 arg2 = "fixed"

@@ -378,48 +378,36 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
     raise NotImplementedError(token.type)
 
 def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
+    bolt_expression_parser = delegate("bolt:primary")
     with stream.checkpoint() as commit:
-        # bolt expression will be resolved later    
-        args: list[AstNodeContainer] = []
-        for _ in range(5):
-            with stream.checkpoint() as commit1:
-                bolt_expression_parser = delegate("bolt:primary")
-                arg = AstNodeContainer(value=bolt_expression_parser(stream))
-                args.append(arg)
-                commit1()
-                continue
-            break
-        if len(args) < 2:
-            print(args)
-            raise stream.emit_error(InvalidSyntax("score literal must have at least two arguments", args))
-        node = AstIntegerScoreResolveLater(args=AstChildren(args), depth=MutableDepth(depth+1))
-        commit()
-        return node
-    # by default literal context can be ommited
-    with stream.checkpoint() as commit:
-        target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True}, depth+1)
-        commit()
-        score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
-        node = AstIntegerScore(target_type=AstTargetTypeType(value="context"), target_target=target_target, score=score, fallback=None, depth=MutableDepth(depth+1))
-        return node
-    # if it's not a AstTargetType, it must be AstTargetTypeType
-    with stream.checkpoint() as commit:
-        target_type: AstTargetTypeType = parse_node_or_union(stream, operation_type, {"type": AstTargetTypeType, "required": True}, depth+1)
-        if target_type.value == "context":
+        args = []
+        for _ in range(3):
+            try:
+                bolt_node: AstNode = AstNodeContainer(value=bolt_expression_parser(stream))
+                args.append(bolt_node)
+                commit()
+            except UnrecognizedParser:
+                raise InvalidSyntax("Bolt is not loaded")
+        return AstIntegerScoreResolveLater(args=AstChildren(args), depth=MutableDepth(depth+1))
+    target_type: AstTargetTypeType = set_location(AstTargetTypeType.from_value("context"), stream.current)
+    target_target: Optional[AstTargetType] = None
+    target_name: Optional[AstPlayerName|AstUUID] = None
+
+    target: AstTargetTypeType | AstTargetType = parse_node_or_union(stream, operation_type, {"type": AstTargetTypeType | AstTargetType, "required": True}, depth+1)
+    if isinstance(target, AstTargetTypeType):
+        target_type = target
+        if target.value == "context":
             target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True}, depth+1)
-            score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
-            fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
-            node = AstIntegerScore(target_type=target_type, target_target=target_target, score=score, fallback=fallback, depth=MutableDepth(depth+1))
-            commit()
-            return node
-        elif target_type.value == "fixed":
+        elif target.value == "fixed":
             target_name = parse_node_or_union(stream, operation_type, {"type": Optional[AstPlayerName|AstUUID], "required": True}, depth+1)
-            score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
-            fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
-            node = AstIntegerScore(target_type=target_type, target_name=target_name, score=score, fallback=fallback, depth=MutableDepth(depth+1))
-            commit()
-            return node
-    raise stream.emit_error(InvalidSyntax("w"))
+        else:
+            raise InvalidSyntax("UNREACHABLE")
+    else: 
+        target_target = target
+
+    score: AstObjective = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
+    node = AstIntegerScore(target_type=target_type, target_target=target_target, target_name=target_name, score=score, fallback=None, depth=MutableDepth(depth+1))
+    return node
 
 def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: TokenStream, token: Token, operation_type: OperationType, depth: int):
     """Parse function call with named arguments based on signature"""
@@ -537,7 +525,7 @@ def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: 
 
 
 
-def parse_node_or_union(stream: TokenStream, operation_type: OperationType, node_or_union: Any, depth: int):
+def parse_node_or_union(stream: TokenStream, operation_type: OperationType, node_or_union: Any, depth: int) -> Any:
     if isinstance(node_or_union["type"], Union):
         for arg in get_args(node_or_union["type"]):
             with stream.checkpoint() as commit:

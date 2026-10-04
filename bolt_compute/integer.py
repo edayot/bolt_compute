@@ -224,6 +224,7 @@ class AstIntegerScoreResolveLater(AstBaseInteger):
     args: AstChildren[AstNodeContainer] = required_field()
 
     def serialize(self, result):
+        print(self)
         arr = deque([x.value for x in self.args])
         first = arr.popleft()
         if first in AstTargetType.options:
@@ -233,12 +234,17 @@ class AstIntegerScoreResolveLater(AstBaseInteger):
             score = AstObjective.from_value(arr.popleft())
         elif first in AstTargetTypeType.options:
             target_type = AstTargetTypeType.from_value(first)
-            target_target = None
-            name = arr.popleft()
-            try:
-                target_name = AstPlayerName.from_value(name)
-            except ValueError:
-                target_name = AstUUID.from_value(name)
+            if first == "fixed":
+                target_target = None
+                name = arr.popleft()
+                try:
+                    target_name = AstPlayerName.from_value(name)
+                except ValueError:
+                    target_name = AstUUID.from_value(name)
+            elif first == "context":
+                target_name = None
+                name = arr.popleft()
+                target_target = AstTargetType.from_value(name)
             score = AstObjective.from_value(arr.popleft())
         else:
             exc = InvalidSyntax(f"{first} is not in {AstTargetType.options} or {AstTargetTypeType.options}")
