@@ -136,7 +136,11 @@ class AstFloatAdd(AstBaseFloatInputs):
 class AstFloatLength(AstBaseFloatInputs):
     type = "length"
 
-
+@dataclass(frozen=True, slots=True)
+class AstFloatPow(AstBaseFloat):
+    type = "pow"
+    base: AstBaseFloat = required_field(metadata={"bolt_compute_serialize": True})
+    exponent: AstBaseFloat = required_field(metadata={"bolt_compute_serialize": True})
 @dataclass(frozen=True, slots=True)
 class AstBaseFloatBinaryOp(AstBaseFloat):
     left: AstBaseFloat = required_field(metadata={"bolt_compute_serialize": True})
@@ -156,12 +160,6 @@ class AstFloatDiv(AstBaseFloatBinaryOp):
 @dataclass(frozen=True, slots=True)
 class AstFloatMod(AstBaseFloatBinaryOp):
     type = "mod"
-
-
-@dataclass(frozen=True, slots=True)
-class AstFloatPow(AstBaseFloatBinaryOp):
-    type = "pow"
-
 
 @dataclass(frozen=True, slots=True)
 class AstBaseFloatConstant(AstBaseFloat):

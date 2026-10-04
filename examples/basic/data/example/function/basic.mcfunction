@@ -183,11 +183,11 @@ compute bolt integer (
     (score context this this)
 )
 compute bolt integer (
-    (score context this this 15)
+    (score context this this)
 )
 
 compute bolt integer (
-    (score context this this 15)
+    (score context this this)
 )
 
 arg1 = "fixed"
@@ -211,7 +211,7 @@ arg2 = "fixed"
 
 compute bolt float (
     # if you start using bolt variable, next values must be 
-    score arg2 "jeb_" "my_scoreeee" 15
+    score arg2 "jeb_" "my_scoreeee"
 )
 
 

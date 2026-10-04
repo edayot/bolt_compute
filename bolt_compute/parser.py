@@ -182,9 +182,9 @@ def parse_multiplicative(stream: TokenStream, operation_type: OperationType, dep
                         lvalue = AstFloatMul(inputs=AstChildren([lvalue.cast_float(), rvalue.cast_float()]), depth=MutableDepth(depth))
                 case "**":
                     if operation_type == "integer":
-                        lvalue = AstIntegerPow(left=lvalue.cast_int(), right=rvalue.cast_int(), depth=MutableDepth(depth))
+                        lvalue = AstIntegerPow(base=lvalue.cast_int(), exponent=rvalue.cast_int(), depth=MutableDepth(depth))
                     elif operation_type == "float":
-                        lvalue = AstFloatPow(left=lvalue.cast_float(), right=rvalue.cast_float(), depth=MutableDepth(depth))
+                        lvalue = AstFloatPow(base=lvalue.cast_float(), exponent=rvalue.cast_float(), depth=MutableDepth(depth))
                 case "/":
                     assert (operation_type == "float")
                     lvalue = AstFloatDiv(left=lvalue.cast_float(), right=rvalue.cast_float(), depth=MutableDepth(depth))
@@ -304,11 +304,9 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
             storage = parse_node_or_union(stream, operation_type, {"type": AstResourceLocation, "required": True}, depth+1)
             path = parse_node_or_union(stream, operation_type, {"type": AstNbtPath, "required": True}, depth+1)
             if operation_type == "float":
-                fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseFloat | None], "required": False, "has_default": True, "default": None}, depth+1)
-                node = AstFloatStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth+1))
+                node = AstFloatStorage(storage=storage, path=path, fallback=None, depth=MutableDepth(depth+1))
             else:
-                fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
-                node = AstIntegerStorage(storage=storage, path=path, fallback=fallback, depth=MutableDepth(depth+1))
+                node = AstIntegerStorage(storage=storage, path=path, fallback=None, depth=MutableDepth(depth+1))
             set_location(node, token)
             return node
         case Token("score"):
@@ -402,8 +400,7 @@ def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
         target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True}, depth+1)
         commit()
         score = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
-        fallback = parse_node_or_union(stream, operation_type, {"type": Union[AstBaseInteger | None], "required": False, "has_default": True, "default": None}, depth+1)
-        node = AstIntegerScore(target_type=AstTargetTypeType(value="context"), target_target=target_target, score=score, fallback=fallback, depth=MutableDepth(depth+1))
+        node = AstIntegerScore(target_type=AstTargetTypeType(value="context"), target_target=target_target, score=score, fallback=None, depth=MutableDepth(depth+1))
         return node
     # if it's not a AstTargetType, it must be AstTargetTypeType
     with stream.checkpoint() as commit:

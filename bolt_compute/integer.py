@@ -70,6 +70,11 @@ class AstIntegerAvg(AstBaseIntegerInputs):
 
 
 @dataclass(frozen=True, slots=True)
+class AstIntegerPow(AstBaseInteger):
+    type = "pow"
+    base: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
+    exponent: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
+@dataclass(frozen=True, slots=True)
 class AstBaseIntegerBinaryOp(AstBaseInteger):
     left: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
     right: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
@@ -98,10 +103,6 @@ class AstIntegerMod(AstBaseIntegerBinaryOp):
 class AstIntegerFloorMod(AstBaseIntegerBinaryOp):
     type = "floor_mod"
 
-
-@dataclass(frozen=True, slots=True)
-class AstIntegerPow(AstBaseIntegerBinaryOp):
-    type = "pow"
 
 
 @dataclass(frozen=True, slots=True)
