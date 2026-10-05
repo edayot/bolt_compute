@@ -224,7 +224,6 @@ class AstIntegerScoreResolveLater(AstBaseInteger):
     args: AstChildren[AstNodeContainer] = required_field()
 
     def serialize(self, result):
-        print(self)
         arr = deque([x.value for x in self.args])
         first = arr.popleft()
         if first in AstTargetType.options:
