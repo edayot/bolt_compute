@@ -1,6 +1,6 @@
 <class 'mecha.ast.AstRoot'>
   location: SourceLocation(pos=0, lineno=1, colno=1)
-  end_location: SourceLocation(pos=907, lineno=30, colno=2)
+  end_location: SourceLocation(pos=897, lineno=30, colno=2)
   commands:
     <class 'mecha.ast.AstCommand'>
       location: SourceLocation(pos=0, lineno=1, colno=1)
@@ -141,103 +141,103 @@
                       fallback: None
     <class 'mecha.ast.AstCommand'>
       location: SourceLocation(pos=240, lineno=11, colno=1)
-      end_location: SourceLocation(pos=329, lineno=11, colno=90)
+      end_location: SourceLocation(pos=324, lineno=11, colno=85)
       identifier: 'execute:subcommand'
       arguments:
         <class 'mecha.ast.AstCommand'>
           location: SourceLocation(pos=248, lineno=11, colno=9)
-          end_location: SourceLocation(pos=329, lineno=11, colno=90)
+          end_location: SourceLocation(pos=324, lineno=11, colno=85)
           identifier: 'execute:on:origin:subcommand'
           arguments:
             <class 'mecha.ast.AstCommand'>
               location: SourceLocation(pos=258, lineno=11, colno=19)
-              end_location: SourceLocation(pos=329, lineno=11, colno=90)
+              end_location: SourceLocation(pos=324, lineno=11, colno=85)
               identifier: 'execute:run:subcommand'
               arguments:
                 <class 'mecha.ast.AstCommand'>
                   location: SourceLocation(pos=262, lineno=11, colno=23)
-                  end_location: SourceLocation(pos=329, lineno=11, colno=90)
+                  end_location: SourceLocation(pos=324, lineno=11, colno=85)
                   identifier: 'data:modify:storage:target:targetPath:set:from:entity:source:sourcePath'
                   arguments:
                     <class 'mecha.ast.AstResourceLocation'>
                       location: SourceLocation(pos=282, lineno=11, colno=43)
-                      end_location: SourceLocation(pos=301, lineno=11, colno=62)
+                      end_location: SourceLocation(pos=296, lineno=11, colno=57)
                       is_tag: False
-                      namespace: 'grappling_hook'
+                      namespace: 'namespace'
                       path: 'temp'
                     <class 'mecha.ast.AstNbtPath'>
-                      location: SourceLocation(pos=302, lineno=11, colno=63)
-                      end_location: SourceLocation(pos=306, lineno=11, colno=67)
+                      location: SourceLocation(pos=297, lineno=11, colno=58)
+                      end_location: SourceLocation(pos=301, lineno=11, colno=62)
                       components:
                         <class 'mecha.ast.AstNbtPathKey'>
-                          location: SourceLocation(pos=302, lineno=11, colno=63)
-                          end_location: SourceLocation(pos=306, lineno=11, colno=67)
+                          location: SourceLocation(pos=297, lineno=11, colno=58)
+                          end_location: SourceLocation(pos=301, lineno=11, colno=62)
                           value: 'pos1'
                     <class 'mecha.ast.AstSelector'>
-                      location: SourceLocation(pos=323, lineno=11, colno=84)
-                      end_location: SourceLocation(pos=325, lineno=11, colno=86)
+                      location: SourceLocation(pos=318, lineno=11, colno=79)
+                      end_location: SourceLocation(pos=320, lineno=11, colno=81)
                       variable: 's'
                       arguments:
                         <empty>
                     <class 'mecha.ast.AstNbtPath'>
-                      location: SourceLocation(pos=326, lineno=11, colno=87)
-                      end_location: SourceLocation(pos=329, lineno=11, colno=90)
+                      location: SourceLocation(pos=321, lineno=11, colno=82)
+                      end_location: SourceLocation(pos=324, lineno=11, colno=85)
                       components:
                         <class 'mecha.ast.AstNbtPathKey'>
-                          location: SourceLocation(pos=326, lineno=11, colno=87)
-                          end_location: SourceLocation(pos=329, lineno=11, colno=90)
+                          location: SourceLocation(pos=321, lineno=11, colno=82)
+                          end_location: SourceLocation(pos=324, lineno=11, colno=85)
                           value: 'Pos'
     <class 'mecha.ast.AstCommand'>
-      location: SourceLocation(pos=330, lineno=12, colno=1)
-      end_location: SourceLocation(pos=397, lineno=12, colno=68)
+      location: SourceLocation(pos=325, lineno=12, colno=1)
+      end_location: SourceLocation(pos=387, lineno=12, colno=63)
       identifier: 'data:modify:storage:target:targetPath:set:from:entity:source:sourcePath'
       arguments:
         <class 'mecha.ast.AstResourceLocation'>
-          location: SourceLocation(pos=350, lineno=12, colno=21)
-          end_location: SourceLocation(pos=369, lineno=12, colno=40)
-          is_tag: False
-          namespace: 'grappling_hook'
-          path: 'temp'
-        <class 'mecha.ast.AstNbtPath'>
-          location: SourceLocation(pos=370, lineno=12, colno=41)
-          end_location: SourceLocation(pos=374, lineno=12, colno=45)
-          components:
-            <class 'mecha.ast.AstNbtPathKey'>
-              location: SourceLocation(pos=370, lineno=12, colno=41)
-              end_location: SourceLocation(pos=374, lineno=12, colno=45)
-              value: 'pos2'
-        <class 'mecha.ast.AstSelector'>
-          location: SourceLocation(pos=391, lineno=12, colno=62)
-          end_location: SourceLocation(pos=393, lineno=12, colno=64)
-          variable: 's'
-          arguments:
-            <empty>
-        <class 'mecha.ast.AstNbtPath'>
-          location: SourceLocation(pos=394, lineno=12, colno=65)
-          end_location: SourceLocation(pos=397, lineno=12, colno=68)
-          components:
-            <class 'mecha.ast.AstNbtPathKey'>
-              location: SourceLocation(pos=394, lineno=12, colno=65)
-              end_location: SourceLocation(pos=397, lineno=12, colno=68)
-              value: 'Pos'
-    <class 'mecha.ast.AstCommand'>
-      location: SourceLocation(pos=399, lineno=14, colno=1)
-      end_location: SourceLocation(pos=399, lineno=14, colno=1)
-      identifier: 'data:modify:storage:target:targetPath:set:compute:default:float:provider'
-      arguments:
-        <class 'mecha.ast.AstResourceLocation'>
-          location: SourceLocation(pos=419, lineno=14, colno=21)
-          end_location: SourceLocation(pos=433, lineno=14, colno=35)
+          location: SourceLocation(pos=345, lineno=12, colno=21)
+          end_location: SourceLocation(pos=359, lineno=12, colno=35)
           is_tag: False
           namespace: 'namespace'
           path: 'temp'
         <class 'mecha.ast.AstNbtPath'>
-          location: SourceLocation(pos=434, lineno=14, colno=36)
-          end_location: SourceLocation(pos=442, lineno=14, colno=44)
+          location: SourceLocation(pos=360, lineno=12, colno=36)
+          end_location: SourceLocation(pos=364, lineno=12, colno=40)
           components:
             <class 'mecha.ast.AstNbtPathKey'>
-              location: SourceLocation(pos=434, lineno=14, colno=36)
-              end_location: SourceLocation(pos=442, lineno=14, colno=44)
+              location: SourceLocation(pos=360, lineno=12, colno=36)
+              end_location: SourceLocation(pos=364, lineno=12, colno=40)
+              value: 'pos2'
+        <class 'mecha.ast.AstSelector'>
+          location: SourceLocation(pos=381, lineno=12, colno=57)
+          end_location: SourceLocation(pos=383, lineno=12, colno=59)
+          variable: 's'
+          arguments:
+            <empty>
+        <class 'mecha.ast.AstNbtPath'>
+          location: SourceLocation(pos=384, lineno=12, colno=60)
+          end_location: SourceLocation(pos=387, lineno=12, colno=63)
+          components:
+            <class 'mecha.ast.AstNbtPathKey'>
+              location: SourceLocation(pos=384, lineno=12, colno=60)
+              end_location: SourceLocation(pos=387, lineno=12, colno=63)
+              value: 'Pos'
+    <class 'mecha.ast.AstCommand'>
+      location: SourceLocation(pos=389, lineno=14, colno=1)
+      end_location: SourceLocation(pos=389, lineno=14, colno=1)
+      identifier: 'data:modify:storage:target:targetPath:set:compute:default:float:provider'
+      arguments:
+        <class 'mecha.ast.AstResourceLocation'>
+          location: SourceLocation(pos=409, lineno=14, colno=21)
+          end_location: SourceLocation(pos=423, lineno=14, colno=35)
+          is_tag: False
+          namespace: 'namespace'
+          path: 'temp'
+        <class 'mecha.ast.AstNbtPath'>
+          location: SourceLocation(pos=424, lineno=14, colno=36)
+          end_location: SourceLocation(pos=432, lineno=14, colno=44)
+          components:
+            <class 'mecha.ast.AstNbtPathKey'>
+              location: SourceLocation(pos=424, lineno=14, colno=36)
+              end_location: SourceLocation(pos=432, lineno=14, colno=44)
               value: 'distance'
         <class 'bolt_compute.float.AstFloatSqrt'>
           location: SourceLocation(pos=-1, lineno=0, colno=0)
@@ -270,27 +270,27 @@
                               depth: MutableDepth(value=3)
                               storage:
                                 <class 'mecha.ast.AstResourceLocation'>
-                                  location: SourceLocation(pos=498, lineno=16, colno=18)
-                                  end_location: SourceLocation(pos=512, lineno=16, colno=32)
+                                  location: SourceLocation(pos=488, lineno=16, colno=18)
+                                  end_location: SourceLocation(pos=502, lineno=16, colno=32)
                                   is_tag: False
                                   namespace: 'namespace'
                                   path: 'temp'
                               path:
                                 <class 'mecha.ast.AstNbtPath'>
-                                  location: SourceLocation(pos=513, lineno=16, colno=33)
-                                  end_location: SourceLocation(pos=520, lineno=16, colno=40)
+                                  location: SourceLocation(pos=503, lineno=16, colno=33)
+                                  end_location: SourceLocation(pos=510, lineno=16, colno=40)
                                   components:
                                     <class 'mecha.ast.AstNbtPathKey'>
-                                      location: SourceLocation(pos=513, lineno=16, colno=33)
-                                      end_location: SourceLocation(pos=517, lineno=16, colno=37)
+                                      location: SourceLocation(pos=503, lineno=16, colno=33)
+                                      end_location: SourceLocation(pos=507, lineno=16, colno=37)
                                       value: 'pos1'
                                     <class 'mecha.ast.AstNbtPathSubscript'>
-                                      location: SourceLocation(pos=517, lineno=16, colno=37)
-                                      end_location: SourceLocation(pos=520, lineno=16, colno=40)
+                                      location: SourceLocation(pos=507, lineno=16, colno=37)
+                                      end_location: SourceLocation(pos=510, lineno=16, colno=40)
                                       index:
                                         <class 'mecha.ast.AstNumber'>
-                                          location: SourceLocation(pos=518, lineno=16, colno=38)
-                                          end_location: SourceLocation(pos=519, lineno=16, colno=39)
+                                          location: SourceLocation(pos=508, lineno=16, colno=38)
+                                          end_location: SourceLocation(pos=509, lineno=16, colno=39)
                                           value: 0
                               fallback: None
                           right:
@@ -300,27 +300,27 @@
                               depth: MutableDepth(value=3)
                               storage:
                                 <class 'mecha.ast.AstResourceLocation'>
-                                  location: SourceLocation(pos=531, lineno=16, colno=51)
-                                  end_location: SourceLocation(pos=545, lineno=16, colno=65)
+                                  location: SourceLocation(pos=521, lineno=16, colno=51)
+                                  end_location: SourceLocation(pos=535, lineno=16, colno=65)
                                   is_tag: False
                                   namespace: 'namespace'
                                   path: 'temp'
                               path:
                                 <class 'mecha.ast.AstNbtPath'>
-                                  location: SourceLocation(pos=546, lineno=16, colno=66)
-                                  end_location: SourceLocation(pos=553, lineno=16, colno=73)
+                                  location: SourceLocation(pos=536, lineno=16, colno=66)
+                                  end_location: SourceLocation(pos=543, lineno=16, colno=73)
                                   components:
                                     <class 'mecha.ast.AstNbtPathKey'>
-                                      location: SourceLocation(pos=546, lineno=16, colno=66)
-                                      end_location: SourceLocation(pos=550, lineno=16, colno=70)
+                                      location: SourceLocation(pos=536, lineno=16, colno=66)
+                                      end_location: SourceLocation(pos=540, lineno=16, colno=70)
                                       value: 'pos2'
                                     <class 'mecha.ast.AstNbtPathSubscript'>
-                                      location: SourceLocation(pos=550, lineno=16, colno=70)
-                                      end_location: SourceLocation(pos=553, lineno=16, colno=73)
+                                      location: SourceLocation(pos=540, lineno=16, colno=70)
+                                      end_location: SourceLocation(pos=543, lineno=16, colno=73)
                                       index:
                                         <class 'mecha.ast.AstNumber'>
-                                          location: SourceLocation(pos=551, lineno=16, colno=71)
-                                          end_location: SourceLocation(pos=552, lineno=16, colno=72)
+                                          location: SourceLocation(pos=541, lineno=16, colno=71)
+                                          end_location: SourceLocation(pos=542, lineno=16, colno=72)
                                           value: 0
                               fallback: None
                       exponent:
@@ -345,27 +345,27 @@
                               depth: MutableDepth(value=4)
                               storage:
                                 <class 'mecha.ast.AstResourceLocation'>
-                                  location: SourceLocation(pos=577, lineno=17, colno=18)
-                                  end_location: SourceLocation(pos=591, lineno=17, colno=32)
+                                  location: SourceLocation(pos=567, lineno=17, colno=18)
+                                  end_location: SourceLocation(pos=581, lineno=17, colno=32)
                                   is_tag: False
                                   namespace: 'namespace'
                                   path: 'temp'
                               path:
                                 <class 'mecha.ast.AstNbtPath'>
-                                  location: SourceLocation(pos=592, lineno=17, colno=33)
-                                  end_location: SourceLocation(pos=599, lineno=17, colno=40)
+                                  location: SourceLocation(pos=582, lineno=17, colno=33)
+                                  end_location: SourceLocation(pos=589, lineno=17, colno=40)
                                   components:
                                     <class 'mecha.ast.AstNbtPathKey'>
-                                      location: SourceLocation(pos=592, lineno=17, colno=33)
-                                      end_location: SourceLocation(pos=596, lineno=17, colno=37)
+                                      location: SourceLocation(pos=582, lineno=17, colno=33)
+                                      end_location: SourceLocation(pos=586, lineno=17, colno=37)
                                       value: 'pos1'
                                     <class 'mecha.ast.AstNbtPathSubscript'>
-                                      location: SourceLocation(pos=596, lineno=17, colno=37)
-                                      end_location: SourceLocation(pos=599, lineno=17, colno=40)
+                                      location: SourceLocation(pos=586, lineno=17, colno=37)
+                                      end_location: SourceLocation(pos=589, lineno=17, colno=40)
                                       index:
                                         <class 'mecha.ast.AstNumber'>
-                                          location: SourceLocation(pos=597, lineno=17, colno=38)
-                                          end_location: SourceLocation(pos=598, lineno=17, colno=39)
+                                          location: SourceLocation(pos=587, lineno=17, colno=38)
+                                          end_location: SourceLocation(pos=588, lineno=17, colno=39)
                                           value: 1
                               fallback: None
                           right:
@@ -375,27 +375,27 @@
                               depth: MutableDepth(value=4)
                               storage:
                                 <class 'mecha.ast.AstResourceLocation'>
-                                  location: SourceLocation(pos=610, lineno=17, colno=51)
-                                  end_location: SourceLocation(pos=624, lineno=17, colno=65)
+                                  location: SourceLocation(pos=600, lineno=17, colno=51)
+                                  end_location: SourceLocation(pos=614, lineno=17, colno=65)
                                   is_tag: False
                                   namespace: 'namespace'
                                   path: 'temp'
                               path:
                                 <class 'mecha.ast.AstNbtPath'>
-                                  location: SourceLocation(pos=625, lineno=17, colno=66)
-                                  end_location: SourceLocation(pos=632, lineno=17, colno=73)
+                                  location: SourceLocation(pos=615, lineno=17, colno=66)
+                                  end_location: SourceLocation(pos=622, lineno=17, colno=73)
                                   components:
                                     <class 'mecha.ast.AstNbtPathKey'>
-                                      location: SourceLocation(pos=625, lineno=17, colno=66)
-                                      end_location: SourceLocation(pos=629, lineno=17, colno=70)
+                                      location: SourceLocation(pos=615, lineno=17, colno=66)
+                                      end_location: SourceLocation(pos=619, lineno=17, colno=70)
                                       value: 'pos2'
                                     <class 'mecha.ast.AstNbtPathSubscript'>
-                                      location: SourceLocation(pos=629, lineno=17, colno=70)
-                                      end_location: SourceLocation(pos=632, lineno=17, colno=73)
+                                      location: SourceLocation(pos=619, lineno=17, colno=70)
+                                      end_location: SourceLocation(pos=622, lineno=17, colno=73)
                                       index:
                                         <class 'mecha.ast.AstNumber'>
-                                          location: SourceLocation(pos=630, lineno=17, colno=71)
-                                          end_location: SourceLocation(pos=631, lineno=17, colno=72)
+                                          location: SourceLocation(pos=620, lineno=17, colno=71)
+                                          end_location: SourceLocation(pos=621, lineno=17, colno=72)
                                           value: 1
                               fallback: None
                       exponent:
@@ -420,27 +420,27 @@
                           depth: MutableDepth(value=4)
                           storage:
                             <class 'mecha.ast.AstResourceLocation'>
-                              location: SourceLocation(pos=656, lineno=18, colno=18)
-                              end_location: SourceLocation(pos=670, lineno=18, colno=32)
+                              location: SourceLocation(pos=646, lineno=18, colno=18)
+                              end_location: SourceLocation(pos=660, lineno=18, colno=32)
                               is_tag: False
                               namespace: 'namespace'
                               path: 'temp'
                           path:
                             <class 'mecha.ast.AstNbtPath'>
-                              location: SourceLocation(pos=671, lineno=18, colno=33)
-                              end_location: SourceLocation(pos=678, lineno=18, colno=40)
+                              location: SourceLocation(pos=661, lineno=18, colno=33)
+                              end_location: SourceLocation(pos=668, lineno=18, colno=40)
                               components:
                                 <class 'mecha.ast.AstNbtPathKey'>
-                                  location: SourceLocation(pos=671, lineno=18, colno=33)
-                                  end_location: SourceLocation(pos=675, lineno=18, colno=37)
+                                  location: SourceLocation(pos=661, lineno=18, colno=33)
+                                  end_location: SourceLocation(pos=665, lineno=18, colno=37)
                                   value: 'pos1'
                                 <class 'mecha.ast.AstNbtPathSubscript'>
-                                  location: SourceLocation(pos=675, lineno=18, colno=37)
-                                  end_location: SourceLocation(pos=678, lineno=18, colno=40)
+                                  location: SourceLocation(pos=665, lineno=18, colno=37)
+                                  end_location: SourceLocation(pos=668, lineno=18, colno=40)
                                   index:
                                     <class 'mecha.ast.AstNumber'>
-                                      location: SourceLocation(pos=676, lineno=18, colno=38)
-                                      end_location: SourceLocation(pos=677, lineno=18, colno=39)
+                                      location: SourceLocation(pos=666, lineno=18, colno=38)
+                                      end_location: SourceLocation(pos=667, lineno=18, colno=39)
                                       value: 2
                           fallback: None
                       right:
@@ -450,27 +450,27 @@
                           depth: MutableDepth(value=4)
                           storage:
                             <class 'mecha.ast.AstResourceLocation'>
-                              location: SourceLocation(pos=689, lineno=18, colno=51)
-                              end_location: SourceLocation(pos=703, lineno=18, colno=65)
+                              location: SourceLocation(pos=679, lineno=18, colno=51)
+                              end_location: SourceLocation(pos=693, lineno=18, colno=65)
                               is_tag: False
                               namespace: 'namespace'
                               path: 'temp'
                           path:
                             <class 'mecha.ast.AstNbtPath'>
-                              location: SourceLocation(pos=704, lineno=18, colno=66)
-                              end_location: SourceLocation(pos=711, lineno=18, colno=73)
+                              location: SourceLocation(pos=694, lineno=18, colno=66)
+                              end_location: SourceLocation(pos=701, lineno=18, colno=73)
                               components:
                                 <class 'mecha.ast.AstNbtPathKey'>
-                                  location: SourceLocation(pos=704, lineno=18, colno=66)
-                                  end_location: SourceLocation(pos=708, lineno=18, colno=70)
+                                  location: SourceLocation(pos=694, lineno=18, colno=66)
+                                  end_location: SourceLocation(pos=698, lineno=18, colno=70)
                                   value: 'pos2'
                                 <class 'mecha.ast.AstNbtPathSubscript'>
-                                  location: SourceLocation(pos=708, lineno=18, colno=70)
-                                  end_location: SourceLocation(pos=711, lineno=18, colno=73)
+                                  location: SourceLocation(pos=698, lineno=18, colno=70)
+                                  end_location: SourceLocation(pos=701, lineno=18, colno=73)
                                   index:
                                     <class 'mecha.ast.AstNumber'>
-                                      location: SourceLocation(pos=709, lineno=18, colno=71)
-                                      end_location: SourceLocation(pos=710, lineno=18, colno=72)
+                                      location: SourceLocation(pos=699, lineno=18, colno=71)
+                                      end_location: SourceLocation(pos=700, lineno=18, colno=72)
                                       value: 2
                           fallback: None
                   exponent:
@@ -480,8 +480,8 @@
                       depth: MutableDepth(value=3)
                       value: 2.0
     <class 'mecha.ast.AstCommand'>
-      location: SourceLocation(pos=739, lineno=23, colno=1)
-      end_location: SourceLocation(pos=739, lineno=23, colno=1)
+      location: SourceLocation(pos=729, lineno=23, colno=1)
+      end_location: SourceLocation(pos=729, lineno=23, colno=1)
       identifier: 'compute:bolt'
       arguments:
         <class 'bolt_compute.node.AstComputeRoot'>
@@ -494,8 +494,8 @@
               depth: MutableDepth(value=0)
               condition:
                 <class 'mecha.ast.AstNbtCompound'>
-                  location: SourceLocation(pos=774, lineno=24, colno=15)
-                  end_location: SourceLocation(pos=776, lineno=24, colno=17)
+                  location: SourceLocation(pos=764, lineno=24, colno=15)
+                  end_location: SourceLocation(pos=766, lineno=24, colno=17)
                   entries:
                     <empty>
               on_true:

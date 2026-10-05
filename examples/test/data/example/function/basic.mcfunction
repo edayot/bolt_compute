@@ -8,8 +8,8 @@ compute default float (
 )
 
 # calculate distance between two entities
-execute on origin run data modify storage grappling_hook:temp pos1 set from entity @s Pos
-data modify storage grappling_hook:temp pos2 set from entity @s Pos
+execute on origin run data modify storage namespace:temp pos1 set from entity @s Pos
+data modify storage namespace:temp pos2 set from entity @s Pos
 
 data modify storage namespace:temp distance set compute default float (
     sqrt(
