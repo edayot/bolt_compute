@@ -20,27 +20,27 @@ pipeline:
 Any place where the `compute` command/subcommand is used, you can use the `bolt` subcommand to use an expression instead of a number provider. For example, instead of:
 
 ```mcfunction 
-compute default {type:"minecraft:sum",operands:[1,1]}
-data modify storage namespace:path path set compute default {type:"minecraft:sum",operands:[1,1]}
+compute default float {type:"minecraft:sum",operands:[1,1]}
+data modify storage namespace:path path set compute default float {type:"minecraft:sum",operands:[1,1]}
 ```
 You can use:
 
 ```mcfunction
-compute bolt (1 + 1)
-data modify storage namespace:path path set compute bolt (1 + 1)
+compute default float (1 + 1)
+data modify storage namespace:path path set compute default float (1 + 1)
 ```
 
 ### Literals values
 
 Bolt compute supports the following literal values:
 ```mcfunction
-compute bolt (storage namespace:path path) # compute default {type:"minecraft:storage",storage:"namespace:path",path:"path"}
+compute default float (storage namespace:path path) # compute default float {type:"minecraft:storage",storage:"namespace:path",path:"path"}
 
 x = 1 # bolt variable assignment
-compute bolt (x + 1) # compute default {type:"minecraft:sum",operands:[1,1]}
+compute default float (x + 1) # compute default float {type:"minecraft:sum",operands:[1,1]}
 
 y = "namespace:path_to_number_provider"
-compute bolt (y * y) # compute default {type:"minecraft:product",operands:["namespace:path_to_number_provider","namespace:path_to_number_provider"]}
+compute default float (y * y) # compute default float {type:"minecraft:product",operands:["namespace:path_to_number_provider","namespace:path_to_number_provider"]}
 
 ```
 
@@ -65,7 +65,7 @@ Built-in functions are supported, such as :
 If-else expressions are supported, and equivalent to the `conditional` function, for example:
 
 ```mcfunction
-compute bolt (
+compute default float (
     220210 if {} else 23
 #    ^        ^       ^
 #    |        |       |
@@ -83,7 +83,7 @@ Expressions can be multiline, for example:
 ```mcfunction
 x = 1
 y = 2
-compute bolt (
+compute default float (
     x + y
 )
 ```
@@ -95,7 +95,7 @@ compute bolt (
 x = "namespace:path_to_number_provider"
 y = 256*256
 
-data modify storage example:main result_bolt set compute bolt (
+data modify storage example:main result_bolt set compute default float (
     (storage example:main prod1)*(storage example:main prod2)*(storage example:main prod3)*2
     *
     2485*52+
