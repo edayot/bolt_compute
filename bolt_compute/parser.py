@@ -2,7 +2,7 @@ from dataclasses import MISSING, Field, fields
 from types import NoneType
 from typing import Any, Literal, Type, TypeIs, Union, assert_never, cast, get_args, overload, reveal_type
 
-from bolt import AstCall, AstFormatString, AstIdentifier, AstValue, parse_identifier
+from bolt import AstCall, AstFormatString, AstIdentifier, AstLookup, AstValue, parse_identifier
 from mecha import (
     AlternativeParser,
     AstNode,
@@ -65,7 +65,8 @@ def as_mecha_parser(operation_type: OperationType, depth: int):
     def func(stream: TokenStream):
         if operation_type == "float":
             with float_syntax(stream):
-                return parse_expression(stream, operation_type, depth)
+                x = parse_expression(stream, operation_type, depth)
+                return x
         elif operation_type == "integer":
             with integer_syntax(stream):
                 return parse_expression(stream, operation_type, depth)
@@ -255,7 +256,7 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                     node = AstIntegerReference(reference=AstResourceLocation.from_value(bolt_node.value), depth=MutableDepth(depth))
                     set_location(node, bolt_node)
                     return node
-        elif isinstance(bolt_node, (AstIdentifier, AstFormatString)):
+        elif isinstance(bolt_node, (AstIdentifier, AstFormatString, AstLookup)):
             if operation_type == "integer":
                 commit()
                 node = AstIntegerBoltVariable(value=bolt_node, depth=MutableDepth(depth))

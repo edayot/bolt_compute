@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Iterable, Literal, Optional, Self
 
 from beet.core.utils import required_field
-from bolt import AstExpression, AstFormatString, AstIdentifier
+from bolt import AstExpression, AstFormatString, AstIdentifier, AstLookup
 from mecha import AstChildren, AstNbt, AstNbtPath, AstNode, AstObjective, AstOption, AstPlayerName, AstResourceLocation, AstUUID
 
 from bolt_compute.float import AstFloatBoltVariable, AstFloatReference, AstFloatStorage
@@ -30,7 +30,7 @@ class AstIntegerReference(AstBaseInteger):
 @dataclass(frozen=True, slots=True)
 class AstIntegerBoltVariable(AstBaseFloat):
     type = "bolt_variable"
-    value: AstIdentifier | AstFormatString = required_field(metadata={"bolt_compute_serialize": True})
+    value: AstIdentifier | AstFormatString | AstLookup = required_field(metadata={"bolt_compute_serialize": True})
 
     def serialize(self, result):
         yield from AstFloatBoltVariable.serialize(self, result) # pyright: ignore[reportArgumentType]

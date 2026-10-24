@@ -3,11 +3,13 @@ import typing
 from dataclasses import dataclass, field
 
 from beet.core.utils import required_field
-from bolt import AstFormatString, AstIdentifier
+from bolt import AstFormatString, AstIdentifier, AstLookup
 from mecha import AstChildren, AstNbtCompound, AstNbtList, AstNbtPath, AstNode, AstResourceLocation
 
 from bolt_compute.node import AstBaseInteger, AstBaseFloat
 from tokenstream import InvalidSyntax, set_location
+
+from bolt_compute.using_command import StorageRef
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,13 +35,15 @@ class AstFloatReference(AstBaseFloat):
 @dataclass(frozen=True, slots=True)
 class AstFloatBoltVariable(AstBaseFloat):
     type = "bolt_compute_variable"
-    value: AstIdentifier | AstFormatString = required_field(metadata={"bolt_compute_serialize": True})
+    value: AstIdentifier | AstFormatString | AstLookup = required_field(metadata={"bolt_compute_serialize": True})
 
     def serialize(self, result):
         if isinstance(self.value, (int, float)):
             yield AstFloatConstant(value=self.value, depth=self.depth)
         elif isinstance(self.value, str):
             yield AstFloatReference(reference=AstResourceLocation.from_value(self.value), depth=self.depth)
+        elif isinstance(self.value, StorageRef):
+            yield AstFloatStorage(storage=self.value.storage, path=self.value.nbt_path, depth=self.depth)
         else:
             exc = InvalidSyntax(self.__class__.__name__, self.value, type(self.value))
             set_location(exc, self)

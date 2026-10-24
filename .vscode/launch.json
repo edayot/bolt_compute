@@ -10,7 +10,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "beet",
-            "cwd": "${workspaceFolder}/examples/test",
+            "cwd": "${workspaceFolder}/examples/using_command",
             "preLaunchTask": "clear-beet-cache"
         }
     ]
