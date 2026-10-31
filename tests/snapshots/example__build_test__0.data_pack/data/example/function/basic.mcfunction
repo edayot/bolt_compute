@@ -4,22 +4,20 @@
   commands:
     <class 'mecha.ast.AstCommand'>
       location: SourceLocation(pos=0, lineno=1, colno=1)
-      end_location: SourceLocation(pos=0, lineno=1, colno=1)
+      end_location: SourceLocation(pos=25, lineno=1, colno=26)
       identifier: 'compute:bolt'
       arguments:
         <class 'bolt_compute.node.AstComputeRoot'>
-          location: SourceLocation(pos=-1, lineno=0, colno=0)
-          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
+          location: SourceLocation(pos=20, lineno=1, colno=21)
+          end_location: SourceLocation(pos=25, lineno=1, colno=26)
           children:
             <class 'bolt_compute.float.AstFloatFromInt'>
-              location: SourceLocation(pos=-1, lineno=0, colno=0)
-              end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-              depth: MutableDepth(value=0)
+              location: SourceLocation(pos=20, lineno=1, colno=21)
+              end_location: SourceLocation(pos=25, lineno=1, colno=26)
               input:
                 <class 'bolt_compute.integer.AstIntegerScoreResolveLater'>
-                  location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  depth: MutableDepth(value=1)
+                  location: SourceLocation(pos=20, lineno=1, colno=21)
+                  end_location: SourceLocation(pos=25, lineno=1, colno=26)
                   args:
                     <class 'bolt_compute.node.AstNodeContainer'>
                       location: SourceLocation(pos=-1, lineno=0, colno=0)
@@ -38,33 +36,28 @@
           operation_type: 'float'
     <class 'mecha.ast.AstCommand'>
       location: SourceLocation(pos=67, lineno=5, colno=1)
-      end_location: SourceLocation(pos=67, lineno=5, colno=1)
+      end_location: SourceLocation(pos=135, lineno=6, colno=45)
       identifier: 'compute:default:float:provider'
       arguments:
         <class 'bolt_compute.float.AstFloatAdd'>
-          location: SourceLocation(pos=-1, lineno=0, colno=0)
-          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-          depth: MutableDepth(value=0)
+          location: SourceLocation(pos=95, lineno=6, colno=5)
+          end_location: SourceLocation(pos=135, lineno=6, colno=45)
           inputs:
             <class 'bolt_compute.float.AstFloatMul'>
-              location: SourceLocation(pos=-1, lineno=0, colno=0)
-              end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-              depth: MutableDepth(value=1)
+              location: SourceLocation(pos=95, lineno=6, colno=5)
+              end_location: SourceLocation(pos=101, lineno=6, colno=11)
               inputs:
                 <class 'bolt_compute.float.AstFloatConstant'>
-                  location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  depth: MutableDepth(value=1)
+                  location: SourceLocation(pos=95, lineno=6, colno=5)
+                  end_location: SourceLocation(pos=96, lineno=6, colno=6)
                   value: 2.0
                 <class 'bolt_compute.float.AstFloatSin'>
-                  location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  depth: MutableDepth(value=1)
+                  location: SourceLocation(pos=97, lineno=6, colno=7)
+                  end_location: SourceLocation(pos=101, lineno=6, colno=11)
                   input:
                     <class 'bolt_compute.float.AstFloatStorage'>
-                      location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      depth: MutableDepth(value=3)
+                      location: SourceLocation(pos=101, lineno=6, colno=11)
+                      end_location: SourceLocation(pos=108, lineno=6, colno=18)
                       storage:
                         <class 'mecha.ast.AstResourceLocation'>
                           location: SourceLocation(pos=109, lineno=6, colno=19)
@@ -83,19 +76,16 @@
                               value: 'div'
                       fallback: None
             <class 'bolt_compute.float.AstFloatMax'>
-              location: SourceLocation(pos=-1, lineno=0, colno=0)
-              end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-              depth: MutableDepth(value=1)
+              location: SourceLocation(pos=131, lineno=6, colno=41)
+              end_location: SourceLocation(pos=135, lineno=6, colno=45)
               inputs:
                 <class 'bolt_compute.float.AstFloatFromInt'>
-                  location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  depth: MutableDepth(value=3)
+                  location: SourceLocation(pos=135, lineno=6, colno=45)
+                  end_location: SourceLocation(pos=140, lineno=6, colno=50)
                   input:
                     <class 'bolt_compute.integer.AstIntegerScore'>
-                      location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      depth: MutableDepth(value=4)
+                      location: SourceLocation(pos=135, lineno=6, colno=45)
+                      end_location: SourceLocation(pos=140, lineno=6, colno=50)
                       target_type:
                         <class 'bolt_compute.integer.AstTargetTypeType'>
                           location: SourceLocation(pos=135, lineno=6, colno=45)
@@ -114,14 +104,12 @@
                           value: 'namespace.data'
                       fallback: None
                 <class 'bolt_compute.float.AstFloatFromInt'>
-                  location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  depth: MutableDepth(value=3)
+                  location: SourceLocation(pos=162, lineno=6, colno=72)
+                  end_location: SourceLocation(pos=167, lineno=6, colno=77)
                   input:
                     <class 'bolt_compute.integer.AstIntegerScore'>
-                      location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      depth: MutableDepth(value=4)
+                      location: SourceLocation(pos=162, lineno=6, colno=72)
+                      end_location: SourceLocation(pos=167, lineno=6, colno=77)
                       target_type:
                         <class 'bolt_compute.integer.AstTargetTypeType'>
                           location: SourceLocation(pos=162, lineno=6, colno=72)
@@ -222,7 +210,7 @@
               value: 'Pos'
     <class 'mecha.ast.AstCommand'>
       location: SourceLocation(pos=389, lineno=14, colno=1)
-      end_location: SourceLocation(pos=389, lineno=14, colno=1)
+      end_location: SourceLocation(pos=470, lineno=15, colno=10)
       identifier: 'data:modify:storage:target:targetPath:set:compute:default:float:provider'
       arguments:
         <class 'mecha.ast.AstResourceLocation'>
@@ -240,34 +228,28 @@
               end_location: SourceLocation(pos=432, lineno=14, colno=44)
               value: 'distance'
         <class 'bolt_compute.float.AstFloatSqrt'>
-          location: SourceLocation(pos=-1, lineno=0, colno=0)
-          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-          depth: MutableDepth(value=0)
+          location: SourceLocation(pos=465, lineno=15, colno=5)
+          end_location: SourceLocation(pos=470, lineno=15, colno=10)
           input:
             <class 'bolt_compute.float.AstFloatAdd'>
-              location: SourceLocation(pos=-1, lineno=0, colno=0)
-              end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-              depth: MutableDepth(value=1)
+              location: SourceLocation(pos=480, lineno=16, colno=10)
+              end_location: SourceLocation(pos=705, lineno=18, colno=77)
               inputs:
                 <class 'bolt_compute.float.AstFloatAdd'>
-                  location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  depth: MutableDepth(value=2)
+                  location: SourceLocation(pos=480, lineno=16, colno=10)
+                  end_location: SourceLocation(pos=626, lineno=17, colno=77)
                   inputs:
                     <class 'bolt_compute.float.AstFloatPow'>
-                      location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      depth: MutableDepth(value=2)
+                      location: SourceLocation(pos=480, lineno=16, colno=10)
+                      end_location: SourceLocation(pos=547, lineno=16, colno=77)
                       base:
                         <class 'bolt_compute.float.AstFloatSub'>
-                          location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          depth: MutableDepth(value=2)
+                          location: SourceLocation(pos=480, lineno=16, colno=10)
+                          end_location: SourceLocation(pos=520, lineno=16, colno=50)
                           left:
                             <class 'bolt_compute.float.AstFloatStorage'>
-                              location: SourceLocation(pos=-1, lineno=0, colno=0)
-                              end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                              depth: MutableDepth(value=3)
+                              location: SourceLocation(pos=480, lineno=16, colno=10)
+                              end_location: SourceLocation(pos=487, lineno=16, colno=17)
                               storage:
                                 <class 'mecha.ast.AstResourceLocation'>
                                   location: SourceLocation(pos=488, lineno=16, colno=18)
@@ -295,9 +277,8 @@
                               fallback: None
                           right:
                             <class 'bolt_compute.float.AstFloatStorage'>
-                              location: SourceLocation(pos=-1, lineno=0, colno=0)
-                              end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                              depth: MutableDepth(value=3)
+                              location: SourceLocation(pos=513, lineno=16, colno=43)
+                              end_location: SourceLocation(pos=520, lineno=16, colno=50)
                               storage:
                                 <class 'mecha.ast.AstResourceLocation'>
                                   location: SourceLocation(pos=521, lineno=16, colno=51)
@@ -325,24 +306,20 @@
                               fallback: None
                       exponent:
                         <class 'bolt_compute.float.AstFloatConstant'>
-                          location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          depth: MutableDepth(value=2)
+                          location: SourceLocation(pos=546, lineno=16, colno=76)
+                          end_location: SourceLocation(pos=547, lineno=16, colno=77)
                           value: 2.0
                     <class 'bolt_compute.float.AstFloatPow'>
-                      location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      depth: MutableDepth(value=2)
+                      location: SourceLocation(pos=559, lineno=17, colno=10)
+                      end_location: SourceLocation(pos=626, lineno=17, colno=77)
                       base:
                         <class 'bolt_compute.float.AstFloatSub'>
-                          location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          depth: MutableDepth(value=3)
+                          location: SourceLocation(pos=559, lineno=17, colno=10)
+                          end_location: SourceLocation(pos=599, lineno=17, colno=50)
                           left:
                             <class 'bolt_compute.float.AstFloatStorage'>
-                              location: SourceLocation(pos=-1, lineno=0, colno=0)
-                              end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                              depth: MutableDepth(value=4)
+                              location: SourceLocation(pos=559, lineno=17, colno=10)
+                              end_location: SourceLocation(pos=566, lineno=17, colno=17)
                               storage:
                                 <class 'mecha.ast.AstResourceLocation'>
                                   location: SourceLocation(pos=567, lineno=17, colno=18)
@@ -370,9 +347,8 @@
                               fallback: None
                           right:
                             <class 'bolt_compute.float.AstFloatStorage'>
-                              location: SourceLocation(pos=-1, lineno=0, colno=0)
-                              end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                              depth: MutableDepth(value=4)
+                              location: SourceLocation(pos=592, lineno=17, colno=43)
+                              end_location: SourceLocation(pos=599, lineno=17, colno=50)
                               storage:
                                 <class 'mecha.ast.AstResourceLocation'>
                                   location: SourceLocation(pos=600, lineno=17, colno=51)
@@ -400,24 +376,20 @@
                               fallback: None
                       exponent:
                         <class 'bolt_compute.float.AstFloatConstant'>
-                          location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          depth: MutableDepth(value=3)
+                          location: SourceLocation(pos=625, lineno=17, colno=76)
+                          end_location: SourceLocation(pos=626, lineno=17, colno=77)
                           value: 2.0
                 <class 'bolt_compute.float.AstFloatPow'>
-                  location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  depth: MutableDepth(value=2)
+                  location: SourceLocation(pos=638, lineno=18, colno=10)
+                  end_location: SourceLocation(pos=705, lineno=18, colno=77)
                   base:
                     <class 'bolt_compute.float.AstFloatSub'>
-                      location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      depth: MutableDepth(value=3)
+                      location: SourceLocation(pos=638, lineno=18, colno=10)
+                      end_location: SourceLocation(pos=678, lineno=18, colno=50)
                       left:
                         <class 'bolt_compute.float.AstFloatStorage'>
-                          location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          depth: MutableDepth(value=4)
+                          location: SourceLocation(pos=638, lineno=18, colno=10)
+                          end_location: SourceLocation(pos=645, lineno=18, colno=17)
                           storage:
                             <class 'mecha.ast.AstResourceLocation'>
                               location: SourceLocation(pos=646, lineno=18, colno=18)
@@ -445,9 +417,8 @@
                           fallback: None
                       right:
                         <class 'bolt_compute.float.AstFloatStorage'>
-                          location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                          depth: MutableDepth(value=4)
+                          location: SourceLocation(pos=671, lineno=18, colno=43)
+                          end_location: SourceLocation(pos=678, lineno=18, colno=50)
                           storage:
                             <class 'mecha.ast.AstResourceLocation'>
                               location: SourceLocation(pos=679, lineno=18, colno=51)
@@ -475,23 +446,21 @@
                           fallback: None
                   exponent:
                     <class 'bolt_compute.float.AstFloatConstant'>
-                      location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                      depth: MutableDepth(value=3)
+                      location: SourceLocation(pos=704, lineno=18, colno=76)
+                      end_location: SourceLocation(pos=705, lineno=18, colno=77)
                       value: 2.0
     <class 'mecha.ast.AstCommand'>
       location: SourceLocation(pos=729, lineno=23, colno=1)
-      end_location: SourceLocation(pos=729, lineno=23, colno=1)
+      end_location: SourceLocation(pos=774, lineno=24, colno=25)
       identifier: 'compute:bolt'
       arguments:
         <class 'bolt_compute.node.AstComputeRoot'>
-          location: SourceLocation(pos=-1, lineno=0, colno=0)
-          end_location: SourceLocation(pos=-1, lineno=0, colno=0)
+          location: SourceLocation(pos=754, lineno=24, colno=5)
+          end_location: SourceLocation(pos=774, lineno=24, colno=25)
           children:
             <class 'bolt_compute.float.AstFloatConditional'>
-              location: SourceLocation(pos=-1, lineno=0, colno=0)
-              end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-              depth: MutableDepth(value=0)
+              location: SourceLocation(pos=754, lineno=24, colno=5)
+              end_location: SourceLocation(pos=774, lineno=24, colno=25)
               condition:
                 <class 'mecha.ast.AstNbtCompound'>
                   location: SourceLocation(pos=764, lineno=24, colno=15)
@@ -500,15 +469,13 @@
                     <empty>
               on_true:
                 <class 'bolt_compute.float.AstFloatConstant'>
-                  location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  depth: MutableDepth(value=1)
+                  location: SourceLocation(pos=754, lineno=24, colno=5)
+                  end_location: SourceLocation(pos=760, lineno=24, colno=11)
                   value: 220210.0
               on_false:
                 <class 'bolt_compute.float.AstFloatConstant'>
-                  location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  end_location: SourceLocation(pos=-1, lineno=0, colno=0)
-                  depth: MutableDepth(value=1)
+                  location: SourceLocation(pos=772, lineno=24, colno=23)
+                  end_location: SourceLocation(pos=774, lineno=24, colno=25)
                   value: 23.0
           argument_node: None
           bolt_type: 'default'

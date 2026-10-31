@@ -11,7 +11,7 @@ from mecha import (
 )
 from tokenstream import InvalidSyntax, Token, TokenStream, set_location
 
-from bolt_compute.node import DEFAULT_NODE_ARGS, AstBaseNode, AstComputeRoot, MutableDepth, FLOAT_NODES, INTEGER_NODES
+from bolt_compute.node import DEFAULT_NODE_ARGS, AstBaseNode, AstComputeRoot, FLOAT_NODES, INTEGER_NODES
 from bolt_compute.float import *
 from bolt_compute.integer import *
 from bolt_compute.types import AdditiveOperation, BoltType, MultiplicativeOperation, Operation, OperationType
@@ -61,34 +61,34 @@ def float_syntax(stream: TokenStream):
             yield
 
 
-def as_mecha_parser(operation_type: OperationType, depth: int):
+def as_mecha_parser(operation_type: OperationType):
     def func(stream: TokenStream):
         if operation_type == "float":
             with float_syntax(stream):
-                return parse_expression(stream, operation_type, depth)
+                return parse_expression(stream, operation_type)
         elif operation_type == "integer":
             with integer_syntax(stream):
-                return parse_expression(stream, operation_type, depth)
+                return parse_expression(stream, operation_type)
         raise ValueError(f"invalid {operation_type=}")
     return func
 
 @overload
-def parse_expression(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstBaseFloat: ...
+def parse_expression(stream: TokenStream, operation_type: Literal["float"]) -> AstBaseFloat: ...
 @overload
-def parse_expression(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstBaseInteger: ...
+def parse_expression(stream: TokenStream, operation_type: Literal["integer"]) -> AstBaseInteger: ...
 
-def parse_expression(stream: TokenStream, operation_type: OperationType, depth: int) -> AstBaseNode:
+def parse_expression(stream: TokenStream, operation_type: OperationType) -> AstBaseNode:
     """Parse operations with correct precedence: additive (lower) then multiplicative (higher)."""
-    return parse_conditional(stream, operation_type, depth)
+    return parse_conditional(stream, operation_type)
 
 
 @overload
-def parse_conditional(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstBaseFloat: ...
+def parse_conditional(stream: TokenStream, operation_type: Literal["float"]) -> AstBaseFloat: ...
 @overload
-def parse_conditional(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstBaseInteger: ...
+def parse_conditional(stream: TokenStream, operation_type: Literal["integer"]) -> AstBaseInteger: ...
 
-def parse_conditional(stream: TokenStream, operation_type: OperationType, depth: int) -> AstBaseNode:
-    on_true = parse_additive(stream, operation_type, depth)
+def parse_conditional(stream: TokenStream, operation_type: OperationType) -> AstBaseNode:
+    on_true = parse_additive(stream, operation_type)
     while True:
         with stream.alternative():
             token = stream.expect("conditional")
@@ -97,7 +97,6 @@ def parse_conditional(stream: TokenStream, operation_type: OperationType, depth:
                 set_location(exc, token)
                 raise exc
             # token.value == "if"
-            on_true.depth.value += 1
             condition = delegate("resource_location_or_nbt")(stream)
             
             token = stream.expect("conditional")
@@ -107,51 +106,51 @@ def parse_conditional(stream: TokenStream, operation_type: OperationType, depth:
                 raise exc
             
             # Recursively parse the else clause (which could be another conditional)
-            on_false = parse_additive(stream, operation_type, depth+1)
+            on_false = parse_additive(stream, operation_type)
             if operation_type == "integer":
-                on_true = AstIntegerConditional(condition=condition, on_true=on_true.cast_int(), on_false=on_false.cast_int(), depth=MutableDepth(depth))
+                on_true = AstIntegerConditional(condition=condition, on_true=on_true.cast_int(), on_false=on_false.cast_int())
             elif operation_type == "float":
-                on_true = AstFloatConditional(condition=condition, on_true=on_true.cast_float(), on_false=on_false.cast_float(), depth=MutableDepth(depth))
+                on_true = AstFloatConditional(condition=condition, on_true=on_true.cast_float(), on_false=on_false.cast_float())
             else:
                 exc = InvalidSyntax("No operation_type in current context")
                 set_location(exc, on_false)
                 raise exc
-            set_location(on_true, token)
+            on_true = set_location(on_true, on_true.on_true, on_false)
             continue
         break
     return on_true  
 
 
 @overload
-def parse_additive(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstBaseFloat: ...
+def parse_additive(stream: TokenStream, operation_type: Literal["float"]) -> AstBaseFloat: ...
 @overload
-def parse_additive(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstBaseInteger: ...
+def parse_additive(stream: TokenStream, operation_type: Literal["integer"]) -> AstBaseInteger: ...
 
-def parse_additive(stream: TokenStream, operation_type: OperationType, depth: int) -> AstBaseNode:
+def parse_additive(stream: TokenStream, operation_type: OperationType) -> AstBaseNode:
     """Parse additive operations (+, -) - lowest precedence."""
-    lvalue = parse_multiplicative(stream, operation_type, depth)
+    lvalue = parse_multiplicative(stream, operation_type)
 
     while True:
         with stream.alternative():
             token = stream.expect("additive")
-            rvalue = parse_multiplicative(stream, operation_type, depth + 1)
-            lvalue.depth.value += 1
+            rvalue = parse_multiplicative(stream, operation_type)
+            start = lvalue
             op: AdditiveOperation = token.value  # pyright: ignore[reportAssignmentType]
             match op:
                 case "+":
                     if operation_type == "integer":
-                        lvalue = AstIntegerAdd(inputs=AstChildren([lvalue.cast_int(), rvalue.cast_int()]), depth=MutableDepth(depth))
+                        lvalue = AstIntegerAdd(inputs=AstChildren([lvalue.cast_int(), rvalue.cast_int()]))
                     elif operation_type == "float":
-                        lvalue = AstFloatAdd(inputs=AstChildren([lvalue.cast_float(), rvalue.cast_float()]), depth=MutableDepth(depth))
+                        lvalue = AstFloatAdd(inputs=AstChildren([lvalue.cast_float(), rvalue.cast_float()]))
                 case "-":
                     if operation_type == "integer":
-                        lvalue = AstIntegerSub(left=lvalue.cast_int(), right=rvalue.cast_int(), depth=MutableDepth(depth))
+                        lvalue = AstIntegerSub(left=lvalue.cast_int(), right=rvalue.cast_int())
                     elif operation_type == "float":
-                        lvalue = AstFloatSub(left=lvalue.cast_float(), right=rvalue.cast_float(), depth=MutableDepth(depth))
+                        lvalue = AstFloatSub(left=lvalue.cast_float(), right=rvalue.cast_float())
                 case _:
                     assert_never("AdditiveOperation", op)
 
-            set_location(lvalue, token)
+            lvalue = set_location(lvalue, start, rvalue)
             continue
         break
 
@@ -159,74 +158,74 @@ def parse_additive(stream: TokenStream, operation_type: OperationType, depth: in
 
 
 @overload
-def parse_multiplicative(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstBaseFloat: ...
+def parse_multiplicative(stream: TokenStream, operation_type: Literal["float"]) -> AstBaseFloat: ...
 @overload
-def parse_multiplicative(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstBaseInteger: ...
+def parse_multiplicative(stream: TokenStream, operation_type: Literal["integer"]) -> AstBaseInteger: ...
 
 
-def parse_multiplicative(stream: TokenStream, operation_type: OperationType, depth: int) -> AstBaseNode:
+def parse_multiplicative(stream: TokenStream, operation_type: OperationType) -> AstBaseNode:
     """Parse multiplicative operations (*, /) - highest precedence."""
-    lvalue = parse_primary(stream, operation_type, depth)
+    lvalue = parse_primary(stream, operation_type)
 
     while True:
         with stream.alternative():
             token = stream.expect("multiplicative")
-            rvalue = parse_primary(stream, operation_type, depth + 1)
-            lvalue.depth.value += 1
+            rvalue = parse_primary(stream, operation_type)
+            start = lvalue
             op: MultiplicativeOperation = token.value  # pyright: ignore[reportAssignmentType]
             match op:
                 case "*":
                     if operation_type == "integer":
-                        lvalue = AstIntegerMul(inputs=AstChildren([lvalue.cast_int(), rvalue.cast_int()]), depth=MutableDepth(depth))
+                        lvalue = AstIntegerMul(inputs=AstChildren([lvalue.cast_int(), rvalue.cast_int()]))
                     elif operation_type == "float":
-                        lvalue = AstFloatMul(inputs=AstChildren([lvalue.cast_float(), rvalue.cast_float()]), depth=MutableDepth(depth))
+                        lvalue = AstFloatMul(inputs=AstChildren([lvalue.cast_float(), rvalue.cast_float()]))
                 case "**":
                     if operation_type == "integer":
-                        lvalue = AstIntegerPow(base=lvalue.cast_int(), exponent=rvalue.cast_int(), depth=MutableDepth(depth))
+                        lvalue = AstIntegerPow(base=lvalue.cast_int(), exponent=rvalue.cast_int())
                     elif operation_type == "float":
-                        lvalue = AstFloatPow(base=lvalue.cast_float(), exponent=rvalue.cast_float(), depth=MutableDepth(depth))
+                        lvalue = AstFloatPow(base=lvalue.cast_float(), exponent=rvalue.cast_float())
                 case "/":
                     assert (operation_type == "float")
-                    lvalue = AstFloatDiv(left=lvalue.cast_float(), right=rvalue.cast_float(), depth=MutableDepth(depth))
+                    lvalue = AstFloatDiv(left=lvalue.cast_float(), right=rvalue.cast_float())
                 case "//":
                     assert (operation_type == "integer")
-                    lvalue = AstIntegerDiv(left=lvalue.cast_int(), right=rvalue.cast_int(), depth=MutableDepth(depth))
+                    lvalue = AstIntegerDiv(left=lvalue.cast_int(), right=rvalue.cast_int())
                 case "%":
                     if operation_type == "integer":
-                        lvalue = AstIntegerMod(left=lvalue.cast_int(), right=rvalue.cast_int(), depth=MutableDepth(depth))
+                        lvalue = AstIntegerMod(left=lvalue.cast_int(), right=rvalue.cast_int())
                     elif operation_type == "float":
-                        lvalue = AstFloatMod(left=lvalue.cast_float(), right=rvalue.cast_float(), depth=MutableDepth(depth))
+                        lvalue = AstFloatMod(left=lvalue.cast_float(), right=rvalue.cast_float())
                 case _:
                     assert_never("MultiplicativeOperation", op)
-            set_location(lvalue, token)
+            lvalue = set_location(lvalue, start, rvalue)
             continue
         break
 
     return lvalue
 
 @overload
-def parse_primary(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstBaseFloat: ...
+def parse_primary(stream: TokenStream, operation_type: Literal["float"]) -> AstBaseFloat: ...
 @overload
-def parse_primary(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstBaseInteger: ...
+def parse_primary(stream: TokenStream, operation_type: Literal["integer"]) -> AstBaseInteger: ...
 
-def parse_primary(stream: TokenStream, operation_type: OperationType, depth: int) -> AstBaseNode:
+def parse_primary(stream: TokenStream, operation_type: OperationType) -> AstBaseNode:
     """Parse primary expressions (literals, parenthesized expressions, function calls)."""
     with stream.checkpoint() as commit:
         stream.expect("oparent")
         commit()
-        result = parse_expression(stream, operation_type, depth=depth)
+        result = parse_expression(stream, operation_type)
         commit()
         stream.expect("cparent")
         commit()
         return result
 
-    return parse_literal(stream, operation_type, depth=depth)
+    return parse_literal(stream, operation_type)
 
 @overload
-def parse_literal(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstBaseFloat: ...
+def parse_literal(stream: TokenStream, operation_type: Literal["float"]) -> AstBaseFloat: ...
 @overload
-def parse_literal(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstBaseInteger: ...
-def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int) -> AstBaseNode: 
+def parse_literal(stream: TokenStream, operation_type: Literal["integer"]) -> AstBaseInteger: ...
+def parse_literal(stream: TokenStream, operation_type: OperationType) -> AstBaseNode: 
     bolt_expression_parser = delegate("bolt:primary")
     with stream.checkpoint() as commit:
         try:
@@ -236,35 +235,35 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
         if isinstance(bolt_node, AstValue):
             if isinstance(bolt_node.value, (float, int)) and operation_type == "float":
                 commit()
-                node = AstFloatConstant(value=float(bolt_node.value), depth=MutableDepth(depth))
-                set_location(node, bolt_node)
+                node = AstFloatConstant(value=float(bolt_node.value))
+                node = set_location(node, bolt_node)
                 return node
             elif isinstance(bolt_node.value, int) and operation_type == "integer":
                 commit()
-                node = AstIntegerConstant(value=int(bolt_node.value), depth=MutableDepth(depth))
-                set_location(node, bolt_node)
+                node = AstIntegerConstant(value=int(bolt_node.value))
+                node = set_location(node, bolt_node)
                 return node
             elif isinstance(bolt_node.value, str):
                 if operation_type == "float":
                     commit()
-                    node = AstFloatReference(reference=AstResourceLocation.from_value(bolt_node.value), depth=MutableDepth(depth))
-                    set_location(node, bolt_node)
+                    node = AstFloatReference(reference=AstResourceLocation.from_value(bolt_node.value))
+                    node = set_location(node, bolt_node)
                     return node
                 elif operation_type == "integer":
                     commit()
-                    node = AstIntegerReference(reference=AstResourceLocation.from_value(bolt_node.value), depth=MutableDepth(depth))
-                    set_location(node, bolt_node)
+                    node = AstIntegerReference(reference=AstResourceLocation.from_value(bolt_node.value))
+                    node = set_location(node, bolt_node)
                     return node
         elif isinstance(bolt_node, (AstIdentifier, AstFormatString)):
             if operation_type == "integer":
                 commit()
-                node = AstIntegerBoltVariable(value=bolt_node, depth=MutableDepth(depth))
-                set_location(node, bolt_node)
+                node = AstIntegerBoltVariable(value=bolt_node)
+                node = set_location(node, bolt_node)
                 return node
             elif operation_type == "float":
                 commit()
-                node = AstFloatBoltVariable(value=bolt_node, depth=MutableDepth(depth))
-                set_location(node, bolt_node)
+                node = AstFloatBoltVariable(value=bolt_node)
+                node = set_location(node, bolt_node)
                 return node
         elif isinstance(bolt_node, AstCall):
             exc = InvalidSyntax("Bolt calls are not allowed")
@@ -278,12 +277,12 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
     match token:
         case Token("number"):
             if operation_type == "float":
-                node = AstFloatConstant(value=float(token.value), depth=MutableDepth(depth))
-                set_location(node, token)
+                node = AstFloatConstant(value=float(token.value))
+                node = set_location(node, token)
                 return node
             elif operation_type == "integer":
-                node = AstIntegerConstant(value=int(token.value), depth=MutableDepth(depth))
-                set_location(node, token)
+                node = AstIntegerConstant(value=int(token.value))
+                node = set_location(node, token)
                 return node
         case Token("additive"):
             if token.value == "+":
@@ -291,30 +290,30 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                     t = AstIntegerNOP
                 else: 
                     t = AstFloatNOP
-                node = t(children=parse_primary(stream, operation_type, depth+1))
+                node = t(children=parse_primary(stream, operation_type))
             else:
                 if operation_type == "integer":
                     t = AstIntegerNegate
                 else:
                     t = AstFloatNegate
-                node = t(input=parse_primary(stream, operation_type, depth+1), depth=MutableDepth(depth))
-            set_location(node, token)
+                node = t(input=parse_primary(stream, operation_type))
+            node = set_location(node, token)
             return node
         case Token("storage"):
-            storage = parse_node_or_union(stream, operation_type, {"type": AstResourceLocation, "required": True}, depth+1)
-            path = parse_node_or_union(stream, operation_type, {"type": AstNbtPath, "required": True}, depth+1)
+            storage = parse_node_or_union(stream, operation_type, {"type": AstResourceLocation, "required": True})
+            path = parse_node_or_union(stream, operation_type, {"type": AstNbtPath, "required": True})
             if operation_type == "float":
-                node = AstFloatStorage(storage=storage, path=path, fallback=None, depth=MutableDepth(depth+1))
+                node = AstFloatStorage(storage=storage, path=path, fallback=None)
             else:
-                node = AstIntegerStorage(storage=storage, path=path, fallback=None, depth=MutableDepth(depth+1))
-            set_location(node, token)
+                node = AstIntegerStorage(storage=storage, path=path, fallback=None)
+            node = set_location(node, token)
             return node
         case Token("score"):
-            node = parse_score(stream, operation_type, depth)
-            set_location(node, token)
+            node = parse_score(stream, operation_type)
+            node = set_location(node, token)
             if operation_type == "integer": return node
-            node = AstFloatFromInt(input=node, depth=MutableDepth(depth))
-            set_location(node, token)            
+            node = AstFloatFromInt(input=node)
+            node = set_location(node, token)
             return node
 
         case Token("call"):
@@ -325,8 +324,8 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                 inputs_cls = AstBaseFloatInputs
             elif operation_type == "integer":
                 cls = INTEGER_NODES[call_value]
-                input_cls = AstBaseFloatInput
-                inputs_cls = AstBaseFloatInputs
+                input_cls = AstBaseIntegerInput
+                inputs_cls = AstBaseIntegerInputs
             else:
                 assert_never(operation_type)
             with stream.syntax(
@@ -337,35 +336,35 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
                 if issubclass(cls, input_cls):
                     with stream.checkpoint() as commit:
                         stream.expect(("argument", "input="))
-                        node = cls(input=parse_expression(stream, operation_type, depth+1), depth=MutableDepth(depth))
+                        node = cls(input=parse_expression(stream, operation_type))
                         stream.expect("cparent")
-                        set_location(node, token)
+                        node = set_location(node, token)
                         commit()
                         return node
-                    node = cls(input=parse_expression(stream, operation_type, depth+1), depth=MutableDepth(depth))
+                    node = cls(input=parse_expression(stream, operation_type))
                     stream.expect("cparent")
-                    set_location(node, token)
+                    node = set_location(node, token)
                     return node
                 elif issubclass(cls, inputs_cls):
                     with stream.checkpoint() as commit:
                         stream.expect(("argument", "inputs="))
-                        node = cls(inputs=parse_list(stream, operation_type, depth+1), depth=MutableDepth(depth))
+                        node = cls(inputs=parse_list(stream, operation_type))
                         stream.expect("cparent")
-                        set_location(node, token)
+                        node = set_location(node, token)
                         commit()
                         return node
                     with stream.checkpoint() as commit:
-                        node = cls(inputs=parse_list(stream, operation_type, depth+1), depth=MutableDepth(depth))
+                        node = cls(inputs=parse_list(stream, operation_type))
                         stream.expect("cparent")
-                        set_location(node, token)
+                        node = set_location(node, token)
                         commit()
                         return node
-                    node = cls(inputs=parse_star_arguments(stream, operation_type, depth+1), depth=MutableDepth(depth))
-                    set_location(node, token)
+                    node = cls(inputs=parse_star_arguments(stream, operation_type))
+                    node = set_location(node, token)
                     return node
                 else:
-                    node = parse_function_call(cls, stream, token, operation_type, depth+1)
-                    set_location(node, token)
+                    node = parse_function_call(cls, stream, token, operation_type)
+                    node = set_location(node, token)
                     return node
                     
                 raise NotImplementedError(cls.__name__, cls.type)
@@ -377,7 +376,7 @@ def parse_literal(stream: TokenStream, operation_type: OperationType, depth: int
             raise exc
     raise NotImplementedError(token.type)
 
-def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
+def parse_score(stream: TokenStream, operation_type: OperationType):
     bolt_expression_parser = delegate("bolt:primary")
     with stream.checkpoint() as commit:
         args = []
@@ -388,28 +387,28 @@ def parse_score(stream: TokenStream, operation_type: OperationType, depth: int):
                 commit()
             except UnrecognizedParser:
                 raise InvalidSyntax("Bolt is not loaded")
-        return AstIntegerScoreResolveLater(args=AstChildren(args), depth=MutableDepth(depth+1))
+        return AstIntegerScoreResolveLater(args=AstChildren(args))
     target_type: AstTargetTypeType = set_location(AstTargetTypeType.from_value("context"), stream.current)
     target_target: Optional[AstTargetType] = None
     target_name: Optional[AstPlayerName|AstUUID] = None
 
-    target: AstTargetTypeType | AstTargetType = parse_node_or_union(stream, operation_type, {"type": AstTargetTypeType | AstTargetType, "required": True}, depth+1)
+    target: AstTargetTypeType | AstTargetType = parse_node_or_union(stream, operation_type, {"type": AstTargetTypeType | AstTargetType, "required": True})
     if isinstance(target, AstTargetTypeType):
         target_type = target
         if target.value == "context":
-            target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True}, depth+1)
+            target_target = parse_node_or_union(stream, operation_type, {"type": AstTargetType, "required": True})
         elif target.value == "fixed":
-            target_name = parse_node_or_union(stream, operation_type, {"type": Optional[AstPlayerName|AstUUID], "required": True}, depth+1)
+            target_name = parse_node_or_union(stream, operation_type, {"type": Optional[AstPlayerName|AstUUID], "required": True})
         else:
             raise InvalidSyntax("UNREACHABLE")
     else: 
         target_target = target
 
-    score: AstObjective = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True}, depth+1)
-    node = AstIntegerScore(target_type=target_type, target_target=target_target, target_name=target_name, score=score, fallback=None, depth=MutableDepth(depth+1))
+    score: AstObjective = parse_node_or_union(stream, operation_type, {"type": AstObjective, "required": True})
+    node = AstIntegerScore(target_type=target_type, target_target=target_target, target_name=target_name, score=score, fallback=None)
     return node
 
-def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: TokenStream, token: Token, operation_type: OperationType, depth: int):
+def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: TokenStream, token: Token, operation_type: OperationType):
     """Parse function call with named arguments based on signature"""
     
     sig = inspect.signature(cls.__init__)
@@ -463,9 +462,9 @@ def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: 
                 set_location(exc, arg)
                 raise exc
             
-            node = parse_node_or_union(stream, operation_type, args[arg_name], depth)
+            node = parse_node_or_union(stream, operation_type, args[arg_name])
             if isinstance(node, AstNode):
-                set_location(node, arg)
+                node = set_location(node, arg)
             parsed_arguments[arg_name] = node
             args.pop(arg_name)
             
@@ -477,9 +476,9 @@ def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: 
                     stream.expect("comma")
                     c()
         
-        node = cls(**parsed_arguments, depth=MutableDepth(depth)) # pyright: ignore[reportArgumentType]
+        node = cls(**parsed_arguments) # pyright: ignore[reportArgumentType]
         stream.expect("cparent")
-        set_location(node, token)
+        node = set_location(node, token)
         commit()
         return node
     
@@ -490,9 +489,9 @@ def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: 
         with stream.syntax(
             argument=None,
         ):
-            node = parse_node_or_union(stream, operation_type, arg[1], depth)
+            node = parse_node_or_union(stream, operation_type, arg[1])
             if isinstance(node, AstNode):
-                set_location(node, arg)
+                node = set_location(node, arg)
         parsed_arguments[arg[0]] = node
         if len(args_queue)>0:
             with stream.checkpoint() as commit:
@@ -518,18 +517,18 @@ def parse_function_call(cls: type[AstBaseFloat] | type[AstBaseInteger], stream: 
             with stream.checkpoint() as c:
                 stream.expect("comma")
                 c()
-    node = cls(**parsed_arguments, depth=MutableDepth(depth))
+    node = cls(**parsed_arguments)
     stream.expect("cparent")
-    set_location(node, token)
+    node = set_location(node, token)
     return node
 
 
 
-def parse_node_or_union(stream: TokenStream, operation_type: OperationType, node_or_union: Any, depth: int) -> Any:
+def parse_node_or_union(stream: TokenStream, operation_type: OperationType, node_or_union: Any) -> Any:
     if isinstance(node_or_union["type"], Union):
         for arg in get_args(node_or_union["type"]):
             with stream.checkpoint() as commit:
-                node = parse_node_or_union(stream, operation_type, {"type":arg, "required": True}, depth)
+                node = parse_node_or_union(stream, operation_type, {"type":arg, "required": True})
                 commit()
                 return node
         if not node_or_union["required"]:
@@ -537,12 +536,14 @@ def parse_node_or_union(stream: TokenStream, operation_type: OperationType, node
         raise InvalidSyntax("No successfull union detected")
     elif issubclass(node_or_union["type"], AstBaseInteger):
         with integer_syntax(stream):
-            return parse_expression(stream, "integer", depth + 1)
+            return parse_expression(stream, "integer")
     elif issubclass(node_or_union["type"], AstBaseFloat):
         with float_syntax(stream):
-            return parse_expression(stream, "float", depth + 1)
+            return parse_expression(stream, "float")
     elif hasattr(node_or_union["type"], 'parser') and node_or_union["type"].parser:
         return delegate(node_or_union["type"].parser)(stream)
+    elif issubclass(node_or_union["type"], AstNbtList):
+        return delegate("nbt_list")(stream)
     elif issubclass(node_or_union["type"], NoneType):
         with stream.syntax(none="None"):
             stream.expect("none")
@@ -558,10 +559,10 @@ def parse_node_or_union(stream: TokenStream, operation_type: OperationType, node
 
 
 @overload
-def parse_list(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstChildren[AstBaseFloat]: ...
+def parse_list(stream: TokenStream, operation_type: Literal["float"]) -> AstChildren[AstBaseFloat]: ...
 @overload
-def parse_list(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstChildren[AstBaseInteger]: ...
-def parse_list(stream: TokenStream, operation_type: OperationType, depth: int) -> AstChildren[AstNode]:
+def parse_list(stream: TokenStream, operation_type: Literal["integer"]) -> AstChildren[AstBaseInteger]: ...
+def parse_list(stream: TokenStream, operation_type: OperationType) -> AstChildren[AstNode]:
     """Parse a comma-separated list of expressions inside brackets."""
     with stream.syntax(
         obracket=r'\[',
@@ -574,7 +575,7 @@ def parse_list(stream: TokenStream, operation_type: OperationType, depth: int) -
                 stream.expect("cbracket")
                 commit()
                 break
-            values.append(parse_expression(stream, operation_type, depth=depth + 1))
+            values.append(parse_expression(stream, operation_type))
             follow = stream.expect_any("comma", "cbracket")
             match follow:
                 case Token("cbracket"):
@@ -585,10 +586,10 @@ def parse_list(stream: TokenStream, operation_type: OperationType, depth: int) -
 
 
 @overload
-def parse_star_arguments(stream: TokenStream, operation_type: Literal["float"], depth: int) -> AstChildren[AstBaseFloat]: ...
+def parse_star_arguments(stream: TokenStream, operation_type: Literal["float"]) -> AstChildren[AstBaseFloat]: ...
 @overload
-def parse_star_arguments(stream: TokenStream, operation_type: Literal["integer"], depth: int) -> AstChildren[AstBaseInteger]: ...
-def parse_star_arguments(stream: TokenStream, operation_type: OperationType, depth: int) -> AstChildren[AstNode]:
+def parse_star_arguments(stream: TokenStream, operation_type: Literal["integer"]) -> AstChildren[AstBaseInteger]: ...
+def parse_star_arguments(stream: TokenStream, operation_type: OperationType) -> AstChildren[AstNode]:
     """Parse a comma-separated list of expressions until cparent."""
     values: list[AstNode] = []
     while True:
@@ -596,7 +597,7 @@ def parse_star_arguments(stream: TokenStream, operation_type: OperationType, dep
             stream.expect("cparent")
             commit()
             break
-        values.append(parse_expression(stream, operation_type, depth=depth + 1))
+        values.append(parse_expression(stream, operation_type))
         follow = stream.expect_any("comma", "cparent")
         match follow:
             case Token("cparent"):
@@ -610,18 +611,18 @@ def operation_parser_float(
     stream: TokenStream, bolt_type: BoltType, argument_node: AstNode | None = None
 ) -> AstComputeRoot: 
     with float_syntax(stream):
-        node = parse_expression(stream, "float", 0)
+        node = parse_expression(stream, "float")
     root = AstComputeRoot(children=node, argument_node=argument_node, bolt_type=bolt_type, operation_type="float")
-    set_location(root, node)
+    root = set_location(root, node)
     return root
 
 def operation_parser_integer(
     stream: TokenStream, bolt_type: BoltType, argument_node: AstNode | None = None
 ) -> AstComputeRoot:
     with integer_syntax(stream):
-        node= parse_expression(stream, "integer", 0)
+        node= parse_expression(stream, "integer")
     root = AstComputeRoot(children=node, argument_node=argument_node, bolt_type=bolt_type, operation_type="integer")
-    set_location(root, node)
+    root = set_location(root, node)
     return root
 
 

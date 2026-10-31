@@ -10,8 +10,8 @@ from mecha import (
 from pydantic import BaseModel
 
 from bolt_compute.integer import AstTargetType, AstTargetTypeType
-from bolt_compute.node import serialize_node
 from bolt_compute.parser import as_mecha_parser, operation_parser
+from bolt_compute.transform import BoltComputeTransformer
 
 
 def iter_compute_tree(tree: CommandTree):
@@ -68,12 +68,12 @@ def beet_default(ctx: Context, opts: BoltComputeOpts):
     mc = ctx.inject(Mecha)
     if opts.default_command:
         mc.spec.parsers["command:argument:minecraft:context_float_provider"] = (
-            AlternativeParser([mc.spec.parsers["command:argument:minecraft:context_float_provider"], MultilineParser(as_mecha_parser("float", 0))])
+            AlternativeParser([mc.spec.parsers["command:argument:minecraft:context_float_provider"], MultilineParser(as_mecha_parser("float"))])
         )
         mc.spec.parsers["command:argument:minecraft:context_int_provider"] = (
-            AlternativeParser([mc.spec.parsers["command:argument:minecraft:context_int_provider"], MultilineParser(as_mecha_parser("integer", 0))])
+            AlternativeParser([mc.spec.parsers["command:argument:minecraft:context_int_provider"], MultilineParser(as_mecha_parser("integer"))])
         )
-    mc.serialize.add_rule(serialize_node)
+    mc.transform.extend(BoltComputeTransformer(mc=mc))
 
     for compute in iter_compute_tree(mc.spec.tree):
         if compute.children:

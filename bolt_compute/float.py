@@ -4,10 +4,11 @@ from dataclasses import dataclass, field
 
 from beet.core.utils import required_field
 from bolt import AstFormatString, AstIdentifier
-from mecha import AstChildren, AstNbtCompound, AstNbtList, AstNbtPath, AstNode, AstResourceLocation
+from mecha import AstChildren, AstNbt, AstNbtCompound, AstNbtList, AstNbtPath, AstNbtValue, AstNode, AstResourceLocation, Diagnostic, Mecha
+from nbtlib import Float
 
-from bolt_compute.node import AstBaseInteger, AstBaseFloat
-from tokenstream import InvalidSyntax, set_location
+from bolt_compute.node import AstBaseInteger, AstBaseFloat, nbt_string
+from tokenstream import set_location
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,8 +16,8 @@ class AstFloatNOP(AstBaseFloat):
     type = "bolt_compute_nop"
     children: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
-    def serialize(self, result):
-        yield self.children
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        return self.children.to_nbt(mc)
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,26 +25,24 @@ class AstFloatReference(AstBaseFloat):
     type = "bolt_compute_reference"
     reference: AstResourceLocation = required_field(metadata={"bolt_compute_serialize": True})
 
-    def serialize(self, result):
-        if self.depth.value == 0:
-            result.append(self.reference.get_value())
-        else:
-            result.append(repr(self.reference.get_value()))
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        return nbt_string(self, self.reference.get_value())
 
 @dataclass(frozen=True, slots=True)
 class AstFloatBoltVariable(AstBaseFloat):
     type = "bolt_compute_variable"
     value: AstIdentifier | AstFormatString = required_field(metadata={"bolt_compute_serialize": True})
 
-    def serialize(self, result):
-        if isinstance(self.value, (int, float)):
-            yield AstFloatConstant(value=self.value, depth=self.depth)
-        elif isinstance(self.value, str):
-            yield AstFloatReference(reference=AstResourceLocation.from_value(self.value), depth=self.depth)
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        # bolt evaluates the variable before the transform step
+        value: typing.Any = self.value
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            node = AstFloatConstant(value=float(value))
+        elif isinstance(value, str):
+            node = AstFloatReference(reference=AstResourceLocation.from_value(value))
         else:
-            exc = InvalidSyntax(self.__class__.__name__, self.value, type(self.value))
-            set_location(exc, self)
-            raise exc
+            raise set_location(Diagnostic("error", f"Expected a number or a number provider id but got {value!r}."), self)
+        return set_location(node, self).to_nbt(mc)
     
 @dataclass(frozen=True, slots=True)
 class AstBaseFloatInput(AstBaseFloat):
@@ -170,13 +169,8 @@ class AstBaseFloatConstant(AstBaseFloat):
 class AstFloatConstant(AstBaseFloatConstant):
     type = "constant"
 
-    def serialize(self, result):
-        if self.depth.value == 0:
-            result.append('{type:"minecraft:constant",value:')
-            result.append(str(self.value))
-            result.append('}')
-        else:
-            result.append(str(self.value))
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        return set_location(AstNbtValue(value=Float(self.value)), self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,7 +210,7 @@ class AstFloatEnvironmentAttribute(AstBaseFloat):
 
 
 @dataclass(frozen=True, slots=True)
-class AstBaseFloatNumberDispatcherCase:
+class AstBaseFloatNumberDispatcherCase(AstNode):
     condition: AstNode = required_field(metadata={"bolt_compute_serialize": True})
     value: AstBaseFloat = required_field(metadata={"bolt_compute_serialize": True})
 
@@ -224,14 +218,14 @@ class AstBaseFloatNumberDispatcherCase:
 @dataclass(frozen=True, slots=True)
 class AstFloatNumberDispatcher(AstBaseFloat):
     type = "number_dispatcher"
-    cases: list[AstBaseFloatNumberDispatcherCase] = required_field(metadata={"bolt_compute_serialize": True})
+    cases: AstChildren[AstBaseFloatNumberDispatcherCase] =required_field(metadata={"bolt_compute_serialize": True})
     default: AstBaseFloat = required_field(metadata={"bolt_compute_serialize": True})
 
 
 @dataclass(frozen=True, slots=True)
 class AstFloatConditional(AstBaseFloat):
     type = "conditional"
-    condition: AstNbtCompound | AstNbtList | AstResourceLocation = required_field(metadata={"bolt_compute_serialize": True})
+    condition: AstResourceLocation | AstNbtCompound | AstNbtList = required_field(metadata={"bolt_compute_serialize": True})
     on_true: AstBaseFloat = required_field(metadata={"bolt_compute_serialize": True})
     on_false: AstBaseFloat = required_field(metadata={"bolt_compute_serialize": True})
 

@@ -1,39 +1,48 @@
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Iterable, Literal, Optional, Self
+from typing import Any, Literal, Optional
 
 from beet.core.utils import required_field
 from bolt import AstExpression, AstFormatString, AstIdentifier
-from mecha import AstChildren, AstNbt, AstNbtPath, AstNode, AstObjective, AstOption, AstPlayerName, AstResourceLocation, AstUUID
+from mecha import AstChildren, AstNbt, AstNbtCompound, AstNbtList, AstNbtPath, AstNbtValue, AstNode, AstObjective, AstOption, AstPlayerName, AstResourceLocation, AstUUID, Diagnostic, Mecha
+from nbtlib import Int
 
-from bolt_compute.float import AstFloatBoltVariable, AstFloatReference, AstFloatStorage
-from bolt_compute.node import AstBaseInteger, AstBaseFloat, AstNodeContainer
+from bolt_compute.float import AstFloatReference, AstFloatStorage
+from bolt_compute.node import AstBaseInteger, AstBaseFloat, AstNodeContainer, field_to_nbt, nbt_compound, nbt_string
 
-from tokenstream import InvalidSyntax, set_location
+from tokenstream import set_location
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerNOP(AstBaseInteger):
     type = "bolt_compute_nop"
     children: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
-    def serialize(self, result):
-        yield self.children
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        return self.children.to_nbt(mc)
 
 @dataclass(frozen=True, slots=True)
 class AstIntegerReference(AstBaseInteger):
-    type = "reference"
+    type = "bolt_compute_reference"
     reference: AstResourceLocation = required_field(metadata={"bolt_compute_serialize": True})
 
-    def serialize(self: Self, result: list[str]) -> Iterable[AstNode] | None:
-        return AstFloatReference.serialize(self, result) # pyright: ignore[reportArgumentType]
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        return nbt_string(self, self.reference.get_value())
 
 @dataclass(frozen=True, slots=True)
-class AstIntegerBoltVariable(AstBaseFloat):
-    type = "bolt_variable"
+class AstIntegerBoltVariable(AstBaseInteger):
+    type = "bolt_compute_variable"
     value: AstIdentifier | AstFormatString = required_field(metadata={"bolt_compute_serialize": True})
 
-    def serialize(self, result):
-        yield from AstFloatBoltVariable.serialize(self, result) # pyright: ignore[reportArgumentType]
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        # bolt evaluates the variable before the transform step
+        value: Any = self.value
+        if isinstance(value, int) and not isinstance(value, bool):
+            node = AstIntegerConstant(value=value)
+        elif isinstance(value, str):
+            node = AstIntegerReference(reference=AstResourceLocation.from_value(value))
+        else:
+            raise set_location(Diagnostic("error", f"Expected an integer or a number provider id but got {value!r}."), self)
+        return set_location(node, self).to_nbt(mc)
 @dataclass(frozen=True, slots=True)
 class AstIntegerBinomial(AstBaseInteger):
     type = "binomial"
@@ -44,7 +53,7 @@ class AstIntegerBinomial(AstBaseInteger):
 @dataclass(frozen=True, slots=True)
 class AstIntegerConditional(AstBaseInteger):
     type = "conditional"
-    condition: AstNbt | AstResourceLocation = required_field(metadata={"bolt_compute_serialize": True})
+    condition: AstResourceLocation | AstNbtCompound | AstNbtList = required_field(metadata={"bolt_compute_serialize": True})
     on_true: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
     on_false: AstBaseInteger = required_field(metadata={"bolt_compute_serialize": True})
 
@@ -110,13 +119,8 @@ class AstIntegerConstant(AstBaseInteger):
     type = "constant"
     value: int = required_field(metadata={"bolt_compute_serialize": True})
 
-    def serialize(self, result):
-        if self.depth.value == 0:
-            result.append('{type:"minecraft:constant",value:')
-            result.append(str(self.value))
-            result.append('}')
-        else:
-            result.append(str(self.value))
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        return set_location(AstNbtValue(value=Int(self.value)), self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,29 +197,20 @@ class AstIntegerScore(AstBaseInteger):
     score: AstObjective = required_field(metadata={"bolt_compute_serialize": True})
     fallback: Optional[AstBaseInteger] = required_field(metadata={"bolt_compute_serialize": True})
 
-    def serialize(self, result):
-        result.append('{type:"minecraft:score"')
-        result.append(',target:{')
-        result.append('type:"')
-        yield self.target_type
-        result.append('"')
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        target = {"type": field_to_nbt(self.target_type, mc)}
         if self.target_target:
-            result.append(',target:"')
-            yield self.target_target
-            result.append('"')
+            target["target"] = field_to_nbt(self.target_target, mc)
         if self.target_name:
-            result.append(',name:"')
-            yield self.target_name
-            result.append('"')
-
-        result.append('}')
-        result.append(',score:"')
-        yield self.score
-        result.append('"')
+            target["name"] = field_to_nbt(self.target_name, mc)
+        entries = {
+            "type": nbt_string(self, "minecraft:score"),
+            "target": nbt_compound(self, target),
+            "score": field_to_nbt(self.score, mc),
+        }
         if self.fallback:
-            result.append(',fallback:')
-            yield self.fallback
-        result.append('}')
+            entries["fallback"] = self.fallback.to_nbt(mc)
+        return nbt_compound(self, entries)
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,7 +218,11 @@ class AstIntegerScoreResolveLater(AstBaseInteger):
     type = "bolt_compute_score_resolve_later"
     args: AstChildren[AstNodeContainer] = required_field()
 
-    def serialize(self, result):
+    def to_nbt(self, mc: Mecha) -> AstNbt:
+        return self.resolve().to_nbt(mc)
+
+    def resolve(self) -> AstIntegerScore:
+        # bolt evaluates the arguments before the transform step
         arr = deque([x.value for x in self.args])
         first = arr.popleft()
         if first in AstTargetType.options:
@@ -246,31 +245,26 @@ class AstIntegerScoreResolveLater(AstBaseInteger):
                 target_target = AstTargetType.from_value(name)
             score = AstObjective.from_value(arr.popleft())
         else:
-            exc = InvalidSyntax(f"{first} is not in {AstTargetType.options} or {AstTargetTypeType.options}")
-            set_location(exc, self)
-            raise exc
-        
+            raise set_location(Diagnostic("error", f"{first!r} is not in {AstTargetType.options} or {AstTargetTypeType.options}."), self)
+
         fallback = None
         if len(arr) > 0:
             fallback = arr.popleft()
-        
+
         if isinstance(fallback, str):
-            fallback = AstIntegerReference(reference=AstResourceLocation.from_value(fallback), depth=self.depth)
+            fallback = AstIntegerReference(reference=AstResourceLocation.from_value(fallback))
         elif isinstance(fallback, int):
-            fallback = AstIntegerConstant(value=fallback, depth=self.depth)
+            fallback = AstIntegerConstant(value=fallback)
         elif fallback is None:
             ...
         else:
-            raise NotImplementedError(fallback)
+            raise set_location(Diagnostic("error", f"Expected an integer or a number provider id as fallback but got {fallback!r}."), self)
 
         if len(arr) > 0:
-            exc = InvalidSyntax(f"Too many argument for the score literal, {arr} are left, {self}")
-            set_location(exc, self)
-            raise exc
-        
-        node = AstIntegerScore(target_type=target_type, target_target=target_target, target_name=target_name, score=score, fallback=fallback, depth=self.depth)
-        set_location(node, self)
-        yield node
+            raise set_location(Diagnostic("error", f"Too many arguments for the score literal, {list(arr)} are left."), self)
+
+        node = AstIntegerScore(target_type=target_type, target_target=target_target, target_name=target_name, score=score, fallback=fallback)
+        return set_location(node, self)
 
 
 

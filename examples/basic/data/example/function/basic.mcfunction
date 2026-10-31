@@ -6,8 +6,8 @@ data modify storage example:main prod2 set value 4
 
 
 data modify storage example:main result set compute default float {
-    "type": "minecraft:product",
-    "operands": [
+    "type": "minecraft:mul",
+    "inputs": [
         {
             "type": f"minecraft:storage",
             "storage": "example:main",
@@ -107,32 +107,32 @@ data modify storage example:main result_bolt set compute bolt float (1+1)
 compute bolt float (1+1)
 
 compute bolt float (conditional({
-    "type": "minecraft:value_check",
+    "type": "minecraft:float_value_check",
     "value": {
         "type": "minecraft:uniform",
         "min": 0,
         "max": 1
     },
-    "range": 0
+    "test": {"min": 0.5}
 }, 1, 0))
 
 compute bolt float (
     1 if {
-        "type": "minecraft:value_check",
+        "type": "minecraft:float_value_check",
         "value": {
             "type": "minecraft:uniform",
             "min": 0,
             "max": 1
         },
-        "range": 0
+        "test": {"min": 0.5}
     } else 0
 )
 
 compute bolt float (
-    220210 if {} else 23
-#    ^        ^       ^
-#    |        |       |
-#  on_true    |       on_false
+    220210 if {type: "minecraft:random_chance", chance: 0.5} else 23
+#    ^        ^                                                ^
+#    |        |                                                |
+#  on_true    |                                             on_false
 #         condition
 )
 
